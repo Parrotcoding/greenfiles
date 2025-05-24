@@ -235,48 +235,76 @@
       es: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=es&_x_tr_hl=en&_x_tr_pto=wapp',
       ko: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=ko&_x_tr_hl=en&_x_tr_pto=wapp'
     };
-    if (links[lang]) {
-      window.location.href = links[lang];
-    }
+    if (links[lang]) window.location.href = links[lang];
   }
 
   const formatMap = {
-    'txt': ['pdf'],
-    'pdf': ['png', 'jpg', 'webp'],
-    'docx': ['pdf', 'jpg', 'png'],
-    'jpg': ['png', 'webp', 'pdf', 'bmp', 'svg'],
-    'jpeg': ['png', 'webp', 'pdf', 'bmp', 'svg'],
-    'png': ['jpg', 'webp', 'pdf', 'bmp', 'svg'],
-    'webp': ['jpg', 'png', 'bmp'],
-    'bmp': ['jpg', 'png', 'webp'],
-    'svg': ['png', 'jpg', 'webp']
+    txt: ['pdf'],
+    pdf: ['png', 'jpg', 'webp'],
+    docx: ['pdf', 'jpg', 'png'],
+    jpg: ['png', 'webp', 'pdf', 'bmp', 'svg'],
+    jpeg: ['png', 'webp', 'pdf', 'bmp', 'svg'],
+    png: ['jpg', 'webp', 'pdf', 'bmp', 'svg'],
+    webp: ['jpg', 'png', 'bmp'],
+    bmp: ['jpg', 'png', 'webp'],
+    svg: ['png', 'jpg', 'webp']
   };
+
+  let selectedFile = null;
+
+  const fromSelect = document.getElementById('fromFormat');
+  const toSelect = document.getElementById('toFormat');
+  const fileInput = document.getElementById('fileInput');
+  const fileLabel = document.getElementById('fileInputLabel');
+  const fileNameDisplay = document.getElementById('fileName');
+  const convertBtn = document.getElementById('convertBtn');
+
+  fromSelect.addEventListener('change', () => {
+    const from = fromSelect.value;
+    toSelect.innerHTML = '<option value="">-- Select Format --</option>';
+    if (formatMap[from]) {
+      formatMap[from].forEach(format => {
+        const option = document.createElement('option');
+        option.value = format;
+        option.textContent = format.toUpperCase();
+        toSelect.appendChild(option);
+      });
+      toSelect.disabled = false;
+    } else {
+      toSelect.disabled = true;
+    }
+    fileInput.value = '';
+    fileNameDisplay.textContent = '';
+    fileLabel.style.display = 'none';
+    convertBtn.style.display = 'none';
+  });
+
+  toSelect.addEventListener('change', () => {
+    if (toSelect.value) {
+      fileLabel.style.display = 'block';
+    } else {
+      fileLabel.style.display = 'none';
+    }
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      selectedFile = fileInput.files[0];
+      fileNameDisplay.textContent = `Selected: ${selectedFile.name}`;
+      convertBtn.style.display = 'inline-block';
+    } else {
+      convertBtn.style.display = 'none';
+    }
+  });
+
+  convertBtn.addEventListener('click', () => {
+    if (!selectedFile || !fromSelect.value || !toSelect.value) return;
+    convertFile(fromSelect.value, toSelect.value);
+    document.getElementById('setupSection').style.display = 'none';
+  });
 
   function getExtension(filename) {
     return filename.split('.').pop().toLowerCase();
-  }
-
-  function handleFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    window.selectedFile = file;
-    document.getElementById('fileName').textContent = `Selected: ${file.name}`;
-    const ext = getExtension(file.name);
-    const formatButtons = document.getElementById('formatButtons');
-    formatButtons.innerHTML = '';
-    (formatMap[ext] || []).forEach(fmt => {
-      const btn = document.createElement('button');
-      btn.className = 'format-btn';
-      btn.textContent = `Convert to .${fmt}`;
-      btn.onclick = () => convertFile(fmt);
-      formatButtons.appendChild(btn);
-    });
-  }
-
-  function dropFile(event) {
-    event.preventDefault();
-    document.getElementById('fileInput').files = event.dataTransfer.files;
-    handleFile({ target: document.getElementById('fileInput') });
   }
 
   function downloadFile() {
@@ -362,13 +390,12 @@
     }
   }
 
-  function convertFile(format) {
-    const file = window.selectedFile;
-    const ext = getExtension(file.name);
+  function convertFile(from, to) {
+    const file = selectedFile;
     const fileName = file.name.replace(/\.[^/.]+$/, '');
     const reader = new FileReader();
 
-    if (ext === 'txt' && format === 'pdf') {
+    if (from === 'txt' && to === 'pdf') {
       reader.onload = e => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
@@ -382,11 +409,11 @@
       reader.readAsText(file);
     }
 
-    else if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(ext)) {
+    else if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(from)) {
       reader.onload = e => {
         const img = new Image();
         img.onload = () => {
-          if (format === 'pdf') {
+          if (to === 'pdf') {
             const { jsPDF } = window.jspdf;
             const orientation = img.width > img.height ? 'landscape' : 'portrait';
             const pdf = new jsPDF({ orientation, unit: 'px', format: [img.width, img.height] });
@@ -403,9 +430,9 @@
             ctx.drawImage(img, 0, 0);
             canvas.toBlob(blob => {
               window.convertedBlob = blob;
-              window.convertedName = `${fileName}.${format}`;
-              showPreview(blob, `${fileName}.${format}`);
-            }, `image/${format}`);
+              window.convertedName = `${fileName}.${to}`;
+              showPreview(blob, `${fileName}.${to}`);
+            }, `image/${to}`);
           }
         };
         img.src = e.target.result;
@@ -413,7 +440,7 @@
       reader.readAsDataURL(file);
     }
 
-    else if (ext === 'pdf' && ['png', 'jpg', 'webp'].includes(format)) {
+    else if (from === 'pdf' && ['png', 'jpg', 'webp'].includes(to)) {
       reader.onload = async e => {
         const typedarray = new Uint8Array(e.target.result);
         const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
@@ -427,7 +454,7 @@
           canvas.width = viewport.width;
           canvas.height = viewport.height;
           await page.render({ canvasContext: ctx, viewport }).promise;
-          const dataUrl = canvas.toDataURL(`image/${format}`);
+          const dataUrl = canvas.toDataURL(`image/${to}`);
           const img = document.createElement('img');
           img.src = dataUrl;
           previewBox.appendChild(img);
@@ -438,7 +465,7 @@
       reader.readAsArrayBuffer(file);
     }
 
-    else if (ext === 'docx') {
+    else if (from === 'docx') {
       reader.onload = e => {
         mammoth.convertToHtml({ arrayBuffer: e.target.result }).then(result => {
           const { jsPDF } = window.jspdf;
@@ -448,7 +475,7 @@
           doc.html(html, {
             callback: function (doc) {
               const pdfBlob = doc.output('blob', { encode: true });
-              if (format === 'pdf') {
+              if (to === 'pdf') {
                 window.convertedBlob = pdfBlob;
                 window.convertedName = `${fileName}.pdf`;
                 showPreview(pdfBlob, `${fileName}.pdf`);
@@ -465,9 +492,9 @@
                       page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise.then(() => {
                         canvas.toBlob(blob => {
                           window.convertedBlob = blob;
-                          window.convertedName = `${fileName}.${format}`;
-                          showPreview(blob, `${fileName}.${format}`);
-                        }, `image/${format}`);
+                          window.convertedName = `${fileName}.${to}`;
+                          showPreview(blob, `${fileName}.${to}`);
+                        }, `image/${to}`);
                       });
                     });
                   });
@@ -488,7 +515,6 @@
   }
 
   window.switchLanguage = switchLanguage;
-  window.handleFile = handleFile;
 </script>
 </body>
 </html>
