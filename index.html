@@ -66,15 +66,19 @@
       display: none;
     }
     .upload-label {
-      display: block;
-      cursor: pointer;
-      font-weight: bold;
-      border: 2px dashed var(--border-color);
-      padding: 2rem;
-      width: 100%;
-      text-align: center;
-      margin-bottom: 1rem;
-    }
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  font-weight: bold;
+  border: 2px dashed var(--border-color);
+  padding: 2rem;
+  width: 100%;
+  text-align: center;
+  margin-bottom: 1rem;
+  box-sizing: border-box;
+}
     .file-name {
       font-weight: bold;
       margin-bottom: 0.5rem;
@@ -131,17 +135,8 @@
       box-shadow: 2px 2px 0 var(--border-color);
     }
     #historyPanel {
-      position: fixed;
-      top: 70px;
-      right: 0;
-      width: 300px;
-      max-height: 80vh;
-      background: var(--accent-color);
-      border-left: 2px solid var(--border-color);
-      padding: 1rem;
-      overflow-y: auto;
-      display: none;
-    }
+  display: none !important;
+}
     #historyPanel h2 {
       margin-top: 0;
     }
@@ -151,10 +146,12 @@
   <header>
     <button onclick="toggleHistory()">HISTORY</button>
     <h1>File Converter</h1>
-    <select onchange="toggleTheme(this.value)">
-      <option value="light">Light</option>
-      <option value="dark">Dark</option>
-    </select>
+    <select onchange="switchLanguage(this.value)">
+  <option value="">Select Language</option>
+  <option value="fr">Français</option>
+  <option value="es">Español</option>
+  <option value="ko">한국어</option>
+</select>
   </header>
   <main>
     <div class="uploader" ondrop="dropFile(event)" ondragover="event.preventDefault()">
@@ -179,6 +176,17 @@
     <div id="historyPanel"><h2>Conversion History</h2><div id="historyList"></div></div>
   </main>
   <script>
+function switchLanguage(lang) {
+  const links = {
+    fr: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=fr&_x_tr_hl=en&_x_tr_pto=wapp',
+    es: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=es&_x_tr_hl=en&_x_tr_pto=wapp',
+    ko: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=ko&_x_tr_hl=en&_x_tr_pto=wapp'
+  };
+  if (links[lang]) {
+    window.location.href = links[lang];
+  }
+}
+
 const formatMap = {
   'txt': ['pdf'],
   'pdf': ['png', 'jpg', 'webp'],
@@ -234,26 +242,16 @@ function toggleHistory() {
 }
 
 function updateHistory(filename, from, to) {
-  historyList.unshift({ filename, from, to, timestamp: new Date().toLocaleString() });
+  // History tracking disabled
+});
   if (historyList.length > 20) historyList.pop();
   localStorage.setItem('conversionHistory', JSON.stringify(historyList));
   renderHistory();
 }
 
 function renderHistory() {
-  const list = document.getElementById('historyList');
-  list.innerHTML = '';
-  const basePath = 'https://your-download-directory.com/';
-  historyList.forEach(h => {
-    const div = document.createElement('div');
-    div.style.marginBottom = '1rem';
-    div.innerHTML = `
-      <strong>${h.f}</strong><br>
-      ${h.fr} → ${h.t}<br>
-      <small>${h.ts}</small><br>
-      <button onclick="simulateShowInFinder('${h.savedName}')">Show in Finder</button><br>
-      <a href="${basePath}${h.savedName}" download>Download Again</a>
-    `;
+  document.getElementById('historyList').innerHTML = '<p>History disabled.</p>';
+}</strong><br>${h.from} → ${h.to}<br><small>${h.timestamp}</small>`;
     list.appendChild(div);
   });
 }
