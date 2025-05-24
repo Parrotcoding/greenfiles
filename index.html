@@ -239,7 +239,93 @@
                 newInstruction.style.marginTop = '1rem';
                 document.querySelector('.preview-actions').appendChild(newInstruction);
               }
+              for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 2 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: context, viewport }).promise;
+
+                const dataUrl = canvas.toDataURL(`image/${format}`);
+
+                const wrapper = document.createElement('div');
+                wrapper.style.display = 'flex';
+                wrapper.style.alignItems = 'center';
+                wrapper.style.justifyContent = 'center';
+                wrapper.style.gap = '2rem';
+                wrapper.style.marginBottom = '2rem';
+
+                const card = document.createElement('div');
+                card.style.border = '2px solid black';
+                card.style.padding = '1rem';
+                card.style.background = 'white';
+                card.style.boxShadow = '3px 3px 0 black';
+                card.style.borderRadius = '1rem';
+                card.style.width = '300px';
+                card.style.height = '400px';
+                card.style.display = 'flex';
+                card.style.justifyContent = 'center';
+                card.style.alignItems = 'center';
+
+                const img = document.createElement('img');
+                img.src = dataUrl;
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '100%';
+                card.appendChild(img);
+
+                const controls = document.createElement('div');
+                controls.style.display = 'flex';
+                controls.style.flexDirection = 'column';
+                controls.style.alignItems = 'flex-start';
+                controls.style.justifyContent = 'center';
+                controls.style.gap = '1rem';
+
+                const filenameBox = document.createElement('div');
+                filenameBox.className = 'preview-filename';
+                filenameBox.textContent = `${fileName}_page${i}.${format}`;
+
+                const pageDownloadBtn = document.createElement('button');
+                pageDownloadBtn.textContent = `Download`;
+                pageDownloadBtn.className = 'format-btn';
+                pageDownloadBtn.onclick = () => {
+                  const link = document.createElement('a');
+                  link.href = dataUrl;
+                  link.download = `${fileName}_page${i}.${format}`;
+                  link.click();
+                };
+
+                controls.appendChild(filenameBox);
+                controls.appendChild(pageDownloadBtn);
+                wrapper.appendChild(card);
+                wrapper.appendChild(controls);
+                previewBox.appendChild(wrapper);
+              }
             } else {
+              const page = await pdf.getPage(1);
+              const viewport = page.getViewport({ scale: 2 });
+              const canvas = document.createElement('canvas');
+              const context = canvas.getContext('2d');
+              canvas.width = viewport.width;
+              canvas.height = viewport.height;
+              await page.render({ canvasContext: context, viewport }).promise;
+
+              const dataUrl = canvas.toDataURL(`image/${format}`);
+
+              const img = document.createElement('img');
+              img.src = dataUrl;
+              img.style.maxWidth = '100%';
+              img.style.marginBottom = '0.5rem';
+              previewBox.appendChild(img);
+
+              previewFilename.textContent = `${fileName}.${format}`;
+              downloadBtn.style.display = 'block';
+              window.convertedBlob = await new Promise(resolve => canvas.toBlob(resolve, `image/${format}`));
+              window.convertedName = `${fileName}.${format}`;
+              const existing = document.querySelector('.preview-instruction');
+              if (existing) existing.remove();
+            }
               previewFilename.textContent = `${fileName}.pdf`;
               downloadBtn.style.display = 'block';
               const existing = document.querySelector('.preview-instruction');
