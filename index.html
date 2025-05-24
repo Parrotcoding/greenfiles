@@ -6,12 +6,17 @@
   <title>File Converter</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js">function downloadAllImages() {
       const cards = document.querySelectorAll('#previewBox > div');
-      if (cards.length < 2) return alert('Only available for multi-page previews.');
+      if (cards.length < 2) {
+        downloadFile();
+        return;
+      }
       const buttons = document.querySelectorAll('#previewBox button');
       buttons.forEach(btn => {
-        if (btn.textContent.includes('Download')) {
+        if (btn.textContent.includes('Download Page')) {
           btn.click();
         }
+      });
+    }
       });
     }
       });
@@ -396,6 +401,7 @@
       reader.readAsDataURL(blob);
       document.getElementById('previewFilename').textContent = filename;
       document.getElementById('previewSection').style.display = 'flex';
+            document.querySelector('.download-btn').textContent = pdf.numPages > 1 ? 'Download All' : 'Download';
     }
 
     function downloadFile() {
