@@ -243,10 +243,17 @@ function updateHistory(filename, from, to) {
 function renderHistory() {
   const list = document.getElementById('historyList');
   list.innerHTML = '';
+  const basePath = 'https://your-download-directory.com/';
   historyList.forEach(h => {
     const div = document.createElement('div');
     div.style.marginBottom = '1rem';
-    div.innerHTML = `<strong>${h.filename}</strong><br>${h.from} → ${h.to}<br><small>${h.timestamp}</small>`;
+    div.innerHTML = `
+      <strong>${h.f}</strong><br>
+      ${h.fr} → ${h.t}<br>
+      <small>${h.ts}</small><br>
+      <button onclick="simulateShowInFinder('${h.savedName}')">Show in Finder</button><br>
+      <a href="${basePath}${h.savedName}" download>Download Again</a>
+    `;
     list.appendChild(div);
   });
 }
