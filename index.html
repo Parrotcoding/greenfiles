@@ -144,7 +144,6 @@
 </head>
 <body>
   <header>
-    <button onclick="toggleHistory()">HISTORY</button>
     <h1>File Converter</h1>
     <select onchange="switchLanguage(this.value)">
   <option value="">Select Language</option>
@@ -176,6 +175,9 @@
     <div id="historyPanel"><h2>Conversion History</h2><div id="historyList"></div></div>
   </main>
   <script>
+window.switchLanguage = switchLanguage;
+window.handleFile = handleFile;
+
 function switchLanguage(lang) {
   const links = {
     fr: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=fr&_x_tr_hl=en&_x_tr_pto=wapp',
