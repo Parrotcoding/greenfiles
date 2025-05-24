@@ -66,24 +66,24 @@
     position: relative;
   }
 
-  .uploader > * {
-  max-width: 500px;
-  width: 100%;
-  margin: 0 auto;
-  }
+.uploader {
+  padding: 2rem;
+  padding-bottom: 2rem; /* don't reserve space for a hanging label anymore */
+}
 
 .upload-label {
-  position: relative;
+  position: relative; /* NO absolute positioning */
   background: var(--accent-color);
   border: 2px dashed var(--border-color);
   border-radius: 16px;
   padding: 1.5rem;
   width: 100%;
+  max-width: 500px;
   cursor: pointer;
   font-weight: bold;
   text-align: center;
   box-shadow: 3px 3px 0 var(--border-color);
-  margin-top: 1rem;
+  margin-top: 1.5rem; /* adds spacing below the dropdowns */
 }
 
   .file-preview {
