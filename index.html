@@ -162,22 +162,9 @@
     </div>
   </main>
   <script>
-    window.selectedFile = null;
-    window.convertedBlob = null;
-    window.convertedName = null;
-
-    const formatMap = {
-      'txt': ['pdf'],
-      'pdf': ['png', 'jpg'],
-      'jpg': ['png', 'pdf'],
-      'jpeg': ['png', 'pdf'],
-      'png': ['jpg', 'pdf']
-    };
-
     function getExtension(filename) {
       return filename.split('.').pop().toLowerCase();
     }
-
     function unitToPx(value, unit) {
       const dpi = 96;
       if (unit === 'px') return value;
@@ -185,6 +172,16 @@
       if (unit === 'in') return value * dpi;
       return value;
     }
+    function pxToUnit(px, unit) {
+      const dpi = 96;
+      if (unit === 'px') return px;
+      if (unit === 'cm') return px * 2.54 / dpi;
+      if (unit === 'in') return px / dpi;
+      return px;
+    }
+
+    let originalWidth = 0;
+    let originalHeight = 0;
 
     function handleFile(event) {
       window.selectedFile = event.target.files[0];
@@ -198,19 +195,29 @@
         const img = new Image();
         reader.onload = function (e) {
           img.onload = function () {
-            const aspectRatio = img.width / img.height;
-            let width = 300;
-            let height = Math.round(300 / aspectRatio);
-            document.getElementById('dimWidth').value = (width / 96).toFixed(2);
-            document.getElementById('dimHeight').value = (height / 96).toFixed(2);
-            document.getElementById('dimUnit').value = 'in';
+            originalWidth = img.width;
+            originalHeight = img.height;
+            const aspectRatio = originalWidth / originalHeight;
+            const width = 300;
+            const height = Math.round(width / aspectRatio);
+            const unit = 'in';
+            document.getElementById('dimWidth').value = pxToUnit(width, unit).toFixed(2);
+            document.getElementById('dimHeight').value = pxToUnit(height, unit).toFixed(2);
+            document.getElementById('dimUnit').value = unit;
           };
           img.src = e.target.result;
         };
         reader.readAsDataURL(window.selectedFile);
       }
 
-      const options = formatMap[ext] || [];
+      const options = {
+        'txt': ['pdf'],
+        'pdf': ['png', 'jpg'],
+        'jpg': ['png', 'pdf'],
+        'jpeg': ['png', 'pdf'],
+        'png': ['jpg', 'pdf']
+      }[ext] || [];
+
       const buttons = document.getElementById('formatButtons');
       buttons.innerHTML = '';
       options.forEach(fmt => {
@@ -251,14 +258,27 @@
     }
 
     async function convertFile(format) {
-      if (!window.selectedFile) return alert('Please select a file first.');
-      const fileName = window.selectedFile.name.split('.')[0];
-      const ext = getExtension(window.selectedFile.name);
+      const file = window.selectedFile;
+      if (!file) return alert('Please select a file first.');
+
+      const fileName = file.name.split('.')[0];
+      const ext = getExtension(file.name);
       const reader = new FileReader();
 
       const unit = document.getElementById('dimUnit').value;
-      const width = unitToPx(Number(document.getElementById('dimWidth').value || 300), unit);
-      const height = unitToPx(Number(document.getElementById('dimHeight').value || 400), unit);
+      let width = unitToPx(Number(document.getElementById('dimWidth').value || 300), unit);
+      let height = unitToPx(Number(document.getElementById('dimHeight').value || 400), unit);
+
+      // adjust dimensions to maintain original aspect ratio
+      const targetAspect = width / height;
+      const originalAspect = originalWidth / originalHeight;
+      if (Math.abs(targetAspect - originalAspect) > 0.01) {
+        if (targetAspect > originalAspect) {
+          width = height * originalAspect;
+        } else {
+          height = width / originalAspect;
+        }
+      }
 
       if (ext === 'txt' && format === 'pdf') {
         reader.onload = function (e) {
@@ -270,7 +290,7 @@
           window.convertedName = `${fileName}.pdf`;
           showPreview(blob, window.convertedName);
         };
-        reader.readAsText(window.selectedFile);
+        reader.readAsText(file);
 
       } else if (['jpg', 'jpeg', 'png'].includes(ext) && format === 'pdf') {
         reader.onload = function (e) {
@@ -286,7 +306,7 @@
           };
           img.src = e.target.result;
         };
-        reader.readAsDataURL(window.selectedFile);
+        reader.readAsDataURL(file);
 
       } else if (['jpg', 'jpeg', 'png'].includes(ext) && ['jpg', 'jpeg', 'png'].includes(format)) {
         reader.onload = function (e) {
@@ -305,7 +325,7 @@
           };
           img.src = e.target.result;
         };
-        reader.readAsDataURL(window.selectedFile);
+        reader.readAsDataURL(file);
 
       } else if (ext === 'pdf' && ['png', 'jpg'].includes(format)) {
         reader.onload = function (e) {
@@ -314,9 +334,9 @@
             pdf.getPage(1).then(page => {
               const viewport = page.getViewport({ scale: 2 });
               const canvas = document.createElement('canvas');
-              const context = canvas.getContext('2d');
               canvas.width = viewport.width;
               canvas.height = viewport.height;
+              const context = canvas.getContext('2d');
               page.render({ canvasContext: context, viewport: viewport }).promise.then(() => {
                 canvas.toBlob(blob => {
                   window.convertedBlob = blob;
@@ -327,7 +347,7 @@
             });
           });
         };
-        reader.readAsArrayBuffer(window.selectedFile);
+        reader.readAsArrayBuffer(file);
 
       } else {
         alert('Unsupported conversion.');
