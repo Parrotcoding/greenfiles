@@ -173,127 +173,174 @@
   </footer>
   </main>
 
-  <script>
-    function switchLanguage(lang) {
-      const links = {
-        fr: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=fr&_x_tr_hl=en&_x_tr_pto=wapp',
-        es: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=es&_x_tr_hl=en&_x_tr_pto=wapp',
-        ko: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=ko&_x_tr_hl=en&_x_tr_pto=wapp'
-      };
-      if (links[lang]) {
-        window.location.href = links[lang];
-      }
-    }
-
-    const formatMap = {
-      'txt': ['pdf'],
-      'pdf': ['png', 'jpg', 'webp'],
-      'docx': ['pdf', 'jpg', 'png'],
-      'jpg': ['png', 'webp', 'pdf', 'bmp', 'svg'],
-      'jpeg': ['png', 'webp', 'pdf', 'bmp', 'svg'],
-      'png': ['jpg', 'webp', 'pdf', 'bmp', 'svg'],
-      'webp': ['jpg', 'png', 'bmp'],
-      'bmp': ['jpg', 'png', 'webp'],
-      'svg': ['png', 'jpg', 'webp']
+<script>
+  function switchLanguage(lang) {
+    const links = {
+      fr: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=fr&_x_tr_hl=en&_x_tr_pto=wapp',
+      es: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=es&_x_tr_hl=en&_x_tr_pto=wapp',
+      ko: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=ko&_x_tr_hl=en&_x_tr_pto=wapp'
     };
-
-    function getExtension(filename) {
-      return filename.split('.').pop().toLowerCase();
+    if (links[lang]) {
+      window.location.href = links[lang];
     }
+  }
 
-    function handleFile(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      window.selectedFile = file;
-      document.getElementById('fileName').textContent = `Selected: ${file.name}`;
-      const ext = getExtension(file.name);
-      const formatButtons = document.getElementById('formatButtons');
-      formatButtons.innerHTML = '';
-      (formatMap[ext] || []).forEach(fmt => {
-        const btn = document.createElement('button');
-        btn.className = 'format-btn';
-        btn.textContent = `Convert to .${fmt}`;
-        btn.onclick = () => convertFile(fmt);
-        formatButtons.appendChild(btn);
-      });
-    }
+  const formatMap = {
+    'txt': ['pdf'],
+    'pdf': ['png', 'jpg', 'webp'],
+    'docx': ['pdf', 'jpg', 'png'],
+    'jpg': ['png', 'webp', 'pdf', 'bmp', 'svg'],
+    'jpeg': ['png', 'webp', 'pdf', 'bmp', 'svg'],
+    'png': ['jpg', 'webp', 'pdf', 'bmp', 'svg'],
+    'webp': ['jpg', 'png', 'bmp'],
+    'bmp': ['jpg', 'png', 'webp'],
+    'svg': ['png', 'jpg', 'webp']
+  };
 
-    function dropFile(event) {
-      event.preventDefault();
-      document.getElementById('fileInput').files = event.dataTransfer.files;
-      handleFile({ target: document.getElementById('fileInput') });
-    }
+  function getExtension(filename) {
+    return filename.split('.').pop().toLowerCase();
+  }
 
-    function downloadFile() {
-      if (!window.convertedBlob || !window.convertedName) return alert('No file ready to download.');
+  function handleFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    window.selectedFile = file;
+    document.getElementById('fileName').textContent = `Selected: ${file.name}`;
+    const ext = getExtension(file.name);
+    const formatButtons = document.getElementById('formatButtons');
+    formatButtons.innerHTML = '';
+    (formatMap[ext] || []).forEach(fmt => {
+      const btn = document.createElement('button');
+      btn.className = 'format-btn';
+      btn.textContent = `Convert to .${fmt}`;
+      btn.onclick = () => convertFile(fmt);
+      formatButtons.appendChild(btn);
+    });
+  }
+
+  function dropFile(event) {
+    event.preventDefault();
+    document.getElementById('fileInput').files = event.dataTransfer.files;
+    handleFile({ target: document.getElementById('fileInput') });
+  }
+
+  function downloadFile() {
+    if (!window.convertedBlob || !window.convertedName) return alert('No file ready to download.');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(window.convertedBlob);
+    link.download = window.convertedName;
+    link.click();
+  }
+
+  function downloadAllImages() {
+    const images = document.querySelectorAll('#previewBox img');
+    if (images.length === 0) return alert('No images to download.');
+    const zip = new JSZip();
+    const folder = zip.folder('converted_images');
+    images.forEach((img, i) => {
+      const base64 = img.src.split(',')[1];
+      folder.file(`image_${i + 1}.png`, base64, { base64: true });
+    });
+    zip.generateAsync({ type: 'blob' }).then(blob => {
       const link = document.createElement('a');
-      link.href = URL.createObjectURL(window.convertedBlob);
-      link.download = window.convertedName;
+      link.href = URL.createObjectURL(blob);
+      link.download = 'converted_images.zip';
       link.click();
-    }
+    });
+  }
 
-    function downloadAllImages() {
-      const images = document.querySelectorAll('#previewBox img');
-      if (images.length === 0) return alert('No images to download.');
-      const zip = new JSZip();
-      const folder = zip.folder('converted_images');
-      images.forEach((img, i) => {
-        const base64 = img.src.split(',')[1];
-        folder.file(`image_${i + 1}.png`, base64, { base64: true });
-      });
-      zip.generateAsync({ type: 'blob' }).then(blob => {
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'converted_images.zip';
-        link.click();
-      });
-    }
+  function showPreview(blob, filename) {
+    const ext = getExtension(filename);
+    const previewBox = document.getElementById('previewBox');
+    const reader = new FileReader();
 
-    function showPreview(blob, filename) {
-      const ext = getExtension(filename);
-      const previewBox = document.getElementById('previewBox');
-      const reader = new FileReader();
+    if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
       reader.onload = e => {
-        if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
-          previewBox.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-        } else if (ext === 'pdf') {
-          previewBox.innerHTML = `<iframe src="${e.target.result}" width="100%" height="100%" style="border:none;"></iframe>`;
-        } else if (ext === 'txt') {
-          previewBox.innerHTML = `<pre>${e.target.result}</pre>`;
-        } else if (ext === 'svg') {
-          previewBox.innerHTML = e.target.result;
-        } else {
-          previewBox.textContent = 'Preview not available';
-        }
+        previewBox.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
         document.getElementById('previewFilename').textContent = filename;
         document.getElementById('previewSection').style.display = 'flex';
       };
       reader.readAsDataURL(blob);
     }
 
-    function convertFile(format) {
-      const file = window.selectedFile;
-      const ext = getExtension(file.name);
-      const fileName = file.name.replace(/\.[^/.]+$/, '');
-      const reader = new FileReader();
+    else if (ext === 'pdf') {
+      reader.onload = async e => {
+        const uint8Array = new Uint8Array(e.target.result);
+        const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: context, viewport }).promise;
+        previewBox.innerHTML = '';
+        previewBox.appendChild(canvas);
+        document.getElementById('previewFilename').textContent = filename;
+        document.getElementById('previewSection').style.display = 'flex';
+      };
+      reader.readAsArrayBuffer(blob);
+    }
 
-      if (ext === 'txt' && format === 'pdf') {
-        reader.onload = e => {
-          const { jsPDF } = window.jspdf;
-          const doc = new jsPDF();
-          doc.text(e.target.result, 10, 20);
-          const blob = doc.output('blob');
-          window.convertedBlob = blob;
-          window.convertedName = `${fileName}.pdf`;
-          showPreview(blob, `${fileName}.pdf`);
-        };
-        reader.readAsText(file);
-      }
+    else if (ext === 'txt') {
+      reader.onload = e => {
+        previewBox.innerHTML = `<pre>${e.target.result}</pre>`;
+        document.getElementById('previewFilename').textContent = filename;
+        document.getElementById('previewSection').style.display = 'flex';
+      };
+      reader.readAsText(blob);
+    }
 
-      else if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(ext)) {
-        reader.onload = e => {
-          const img = new Image();
-          img.onload = () => {
+    else if (ext === 'svg') {
+      reader.onload = e => {
+        previewBox.innerHTML = e.target.result;
+        document.getElementById('previewFilename').textContent = filename;
+        document.getElementById('previewSection').style.display = 'flex';
+      };
+      reader.readAsText(blob);
+    }
+
+    else {
+      previewBox.textContent = 'Preview not available';
+      document.getElementById('previewFilename').textContent = filename;
+      document.getElementById('previewSection').style.display = 'flex';
+    }
+  }
+
+  function convertFile(format) {
+    const file = window.selectedFile;
+    const ext = getExtension(file.name);
+    const fileName = file.name.replace(/\.[^/.]+$/, '');
+    const reader = new FileReader();
+
+    if (ext === 'txt' && format === 'pdf') {
+      reader.onload = e => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const lines = doc.splitTextToSize(e.target.result, 180);
+        doc.text(lines, 10, 20);
+        const blob = doc.output('blob', { encode: true });
+        window.convertedBlob = blob;
+        window.convertedName = `${fileName}.pdf`;
+        showPreview(blob, `${fileName}.pdf`);
+      };
+      reader.readAsText(file);
+    }
+
+    else if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(ext)) {
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          if (format === 'pdf') {
+            const { jsPDF } = window.jspdf;
+            const orientation = img.width > img.height ? 'landscape' : 'portrait';
+            const pdf = new jsPDF({ orientation, unit: 'px', format: [img.width, img.height] });
+            pdf.addImage(img, 'JPEG', 0, 0, img.width, img.height);
+            const blob = pdf.output('blob', { encode: true });
+            window.convertedBlob = blob;
+            window.convertedName = `${fileName}.pdf`;
+            showPreview(blob, `${fileName}.pdf`);
+          } else {
             const canvas = document.createElement('canvas');
             canvas.width = img.width;
             canvas.height = img.height;
@@ -304,88 +351,89 @@
               window.convertedName = `${fileName}.${format}`;
               showPreview(blob, `${fileName}.${format}`);
             }, `image/${format}`);
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      }
-
-      else if (ext === 'pdf' && ['png', 'jpg', 'webp'].includes(format)) {
-        reader.onload = async e => {
-          const typedarray = new Uint8Array(e.target.result);
-          const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
-          const previewBox = document.getElementById('previewBox');
-          previewBox.innerHTML = '';
-          for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const viewport = page.getViewport({ scale: 2 });
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            await page.render({ canvasContext: ctx, viewport }).promise;
-            const dataUrl = canvas.toDataURL(`image/${format}`);
-            const img = document.createElement('img');
-            img.src = dataUrl;
-            previewBox.appendChild(img);
           }
-          document.getElementById('previewFilename').textContent = `${fileName} (Multi-page)`;
-          document.getElementById('previewSection').style.display = 'flex';
         };
-        reader.readAsArrayBuffer(file);
-      }
-
-      else if (ext === 'docx') {
-        reader.onload = e => {
-          mammoth.convertToHtml({ arrayBuffer: e.target.result }).then(result => {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const html = document.createElement('div');
-            html.innerHTML = result.value;
-            doc.html(html, {
-              callback: function (doc) {
-                const pdfBlob = doc.output('blob');
-                if (format === 'pdf') {
-                  window.convertedBlob = pdfBlob;
-                  window.convertedName = `${fileName}.pdf`;
-                  showPreview(pdfBlob, `${fileName}.pdf`);
-                } else {
-                  const reader2 = new FileReader();
-                  reader2.onload = e2 => {
-                    const typedarray = new Uint8Array(e2.target.result);
-                    pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
-                      pdf.getPage(1).then(page => {
-                        const viewport = page.getViewport({ scale: 2 });
-                        const canvas = document.createElement('canvas');
-                        canvas.width = viewport.width;
-                        canvas.height = viewport.height;
-                        page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise.then(() => {
-                          canvas.toBlob(blob => {
-                            window.convertedBlob = blob;
-                            window.convertedName = `${fileName}.${format}`;
-                            showPreview(blob, `${fileName}.${format}`);
-                          }, `image/${format}`);
-                        });
-                      });
-                    });
-                  };
-                  reader2.readAsArrayBuffer(pdfBlob);
-                }
-              },
-              x: 10, y: 10
-            });
-          });
-        };
-        reader.readAsArrayBuffer(file);
-      }
-
-      else {
-        alert('Unsupported conversion.');
-      }
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
     }
 
-    window.switchLanguage = switchLanguage;
-    window.handleFile = handleFile;
-  </script>
+    else if (ext === 'pdf' && ['png', 'jpg', 'webp'].includes(format)) {
+      reader.onload = async e => {
+        const typedarray = new Uint8Array(e.target.result);
+        const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+        const previewBox = document.getElementById('previewBox');
+        previewBox.innerHTML = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: 2 });
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          const dataUrl = canvas.toDataURL(`image/${format}`);
+          const img = document.createElement('img');
+          img.src = dataUrl;
+          previewBox.appendChild(img);
+        }
+        document.getElementById('previewFilename').textContent = `${fileName} (Multi-page)`;
+        document.getElementById('previewSection').style.display = 'flex';
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    else if (ext === 'docx') {
+      reader.onload = e => {
+        mammoth.convertToHtml({ arrayBuffer: e.target.result }).then(result => {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+          const html = document.createElement('div');
+          html.innerHTML = result.value;
+          doc.html(html, {
+            callback: function (doc) {
+              const pdfBlob = doc.output('blob', { encode: true });
+              if (format === 'pdf') {
+                window.convertedBlob = pdfBlob;
+                window.convertedName = `${fileName}.pdf`;
+                showPreview(pdfBlob, `${fileName}.pdf`);
+              } else {
+                const reader2 = new FileReader();
+                reader2.onload = e2 => {
+                  const typedarray = new Uint8Array(e2.target.result);
+                  pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
+                    pdf.getPage(1).then(page => {
+                      const viewport = page.getViewport({ scale: 2 });
+                      const canvas = document.createElement('canvas');
+                      canvas.width = viewport.width;
+                      canvas.height = viewport.height;
+                      page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise.then(() => {
+                        canvas.toBlob(blob => {
+                          window.convertedBlob = blob;
+                          window.convertedName = `${fileName}.${format}`;
+                          showPreview(blob, `${fileName}.${format}`);
+                        }, `image/${format}`);
+                      });
+                    });
+                  });
+                };
+                reader2.readAsArrayBuffer(pdfBlob);
+              }
+            },
+            x: 10, y: 10
+          });
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    else {
+      alert('Unsupported conversion.');
+    }
+  }
+
+  window.switchLanguage = switchLanguage;
+  window.handleFile = handleFile;
+</script>
 </body>
 </html>
