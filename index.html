@@ -5,11 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>File Converter</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js">function downloadAllImages() {
+      const cards = document.querySelectorAll('#previewBox > div');
+      if (cards.length < 2) return alert('Only available for multi-page previews.');
       const buttons = document.querySelectorAll('#previewBox button');
       buttons.forEach(btn => {
         if (btn.textContent.includes('Download')) {
           btn.click();
         }
+      });
+    }
       });
     }
   </script>
