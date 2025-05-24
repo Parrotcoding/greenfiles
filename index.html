@@ -221,21 +221,39 @@
       } else if (ext === 'pdf' && ['png', 'jpg', 'webp'].includes(format)) {
         reader.onload = function (e) {
           const typedarray = new Uint8Array(e.target.result);
-          pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
-            pdf.getPage(1).then(page => {
+          pdfjsLib.getDocument({ data: typedarray }).promise.then(async pdf => {
+            const previewBox = document.getElementById('previewBox');
+            previewBox.innerHTML = '';
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
               const viewport = page.getViewport({ scale: 2 });
               const canvas = document.createElement('canvas');
               const context = canvas.getContext('2d');
               canvas.width = viewport.width;
               canvas.height = viewport.height;
-              page.render({ canvasContext: context, viewport }).promise.then(() => {
-                canvas.toBlob(blob => {
-                  window.convertedBlob = blob;
-                  window.convertedName = `${fileName}_page1.${format}`;
-                  showPreview(blob, `${fileName}_page1.${format}`);
-                }, `image/${format}`);
-              });
-            });
+              await page.render({ canvasContext: context, viewport }).promise;
+
+              const dataUrl = canvas.toDataURL(`image/${format}`);
+
+              const img = document.createElement('img');
+              img.src = dataUrl;
+              img.style.marginBottom = '0.5rem';
+              previewBox.appendChild(img);
+
+              const downloadBtn = document.createElement('button');
+              downloadBtn.textContent = `Download Page ${i}`;
+              downloadBtn.className = 'format-btn';
+              downloadBtn.onclick = () => {
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = `${fileName}_page${i}.${format}`;
+                link.click();
+              };
+              previewBox.appendChild(downloadBtn);
+            }
+
+            document.getElementById('previewSection').style.display = 'flex';
           });
         };
         reader.readAsArrayBuffer(file);
