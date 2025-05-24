@@ -4,9 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>File Converter</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js">const zip = new JSZip();
-
-      } else if (ext === 'pdf' && ['png', 'jpg', 'webp'].includes(format)) {
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js">      } else if (ext === 'pdf' && ['png', 'jpg', 'webp'].includes(format)) {
+        const zip = new JSZip();
         reader.onload = function (e) {
           const typedarray = new Uint8Array(e.target.result);
           pdfjsLib.getDocument({ data: typedarray }).promise.then(async pdf => {
@@ -165,7 +164,7 @@
         Click to Upload or Drag and Drop<br>
         <small>Supports: TXT, PDF, JPG, PNG, SVG, WEBP, BMP, DOCX</small>
       </label>
-      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg,.webp,.bmp,.docx" onchange="handleFile(event)">
+      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg,.webp,.bmp,.docx" onchange="handleFile(event)" />
       <div class="file-name" id="fileName"></div>
       <div class="controls">
         <div id="formatButtons" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem;"></div>
