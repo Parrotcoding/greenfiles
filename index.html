@@ -76,8 +76,14 @@
     .controls {
       margin-top: 1rem;
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .dimensions {
+      display: flex;
+      align-items: center;
       gap: 0.5rem;
     }
 
@@ -109,6 +115,7 @@
       align-items: center;
       justify-content: center;
       font-weight: bold;
+      overflow: hidden;
     }
 
     .preview-actions {
@@ -145,7 +152,18 @@
       </label>
       <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png" onchange="handleFile(event)">
       <div class="file-name" id="fileName"></div>
-      <div class="controls" id="formatButtons"></div>
+      <div class="controls">
+        <div class="dimensions">
+          <label>Width: <input type="number" id="dimWidth" style="width: 70px"></label>
+          <label>Height: <input type="number" id="dimHeight" style="width: 70px"></label>
+          <select id="dimUnit">
+            <option value="px">px</option>
+            <option value="cm">cm</option>
+            <option value="in">in</option>
+          </select>
+        </div>
+        <div id="formatButtons" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem;"></div>
+      </div>
     </div>
 
     <div class="preview-container" id="previewSection" style="display:none">
@@ -174,6 +192,14 @@
       return filename.split('.').pop().toLowerCase();
     }
 
+    function unitToPx(value, unit) {
+      const dpi = 96;
+      if (unit === 'px') return value;
+      if (unit === 'cm') return value * (dpi / 2.54);
+      if (unit === 'in') return value * dpi;
+      return value;
+    }
+
     function handleFile(event) {
       window.selectedFile = event.target.files[0];
       if (!window.selectedFile) return;
@@ -197,12 +223,10 @@
       const previewBox = document.getElementById('previewBox');
       const reader = new FileReader();
       reader.onload = function (e) {
-        if (filename.endsWith('.txt')) {
-          previewBox.textContent = e.target.result.slice(0, 200);
-        } else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg') || filename.endsWith('.png')) {
-          previewBox.innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 100%;">`;
+        if (filename.endsWith('.txt') || filename.endsWith('.pdf')) {
+          previewBox.textContent = 'Preview not supported for this format.';
         } else {
-          previewBox.textContent = 'Preview not supported';
+          previewBox.innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 100%;">`;
         }
       };
       reader.readAsDataURL(blob);
@@ -224,10 +248,16 @@
       const ext = getExtension(window.selectedFile.name);
       const reader = new FileReader();
 
+      const unit = document.getElementById('dimUnit').value;
+      const width = unitToPx(Number(document.getElementById('dimWidth').value || 300), unit);
+      const height = unitToPx(Number(document.getElementById('dimHeight').value || 400), unit);
+
       if (ext === 'txt' && format === 'pdf') {
         reader.onload = function (e) {
-          const content = e.target.result;
-          const blob = new Blob([content], { type: 'application/pdf' });
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF({ unit: 'px', format: [width, height] });
+          doc.text(e.target.result, 10, 20);
+          const blob = doc.output('blob');
           window.convertedBlob = blob;
           window.convertedName = `${fileName}.pdf`;
           showPreview(blob, window.convertedName);
@@ -239,8 +269,8 @@
           const img = new Image();
           img.onload = function () {
             const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF({ orientation: img.width > img.height ? 'l' : 'p', unit: 'px', format: [img.width, img.height] });
-            pdf.addImage(img, 'JPEG', 0, 0, img.width, img.height);
+            const pdf = new jsPDF({ unit: 'px', format: [width, height] });
+            pdf.addImage(img, 'JPEG', 0, 0, width, height);
             const blob = pdf.output('blob');
             window.convertedBlob = blob;
             window.convertedName = `${fileName}.pdf`;
@@ -255,10 +285,10 @@
           const img = new Image();
           img.onload = function () {
             const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
+            canvas.width = width;
+            canvas.height = height;
             const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
+            ctx.drawImage(img, 0, 0, width, height);
             canvas.toBlob(blob => {
               window.convertedBlob = blob;
               window.convertedName = `${fileName}.${format}`;
@@ -276,9 +306,9 @@
             pdf.getPage(1).then(page => {
               const viewport = page.getViewport({ scale: 2 });
               const canvas = document.createElement('canvas');
-              const context = canvas.getContext('2d');
               canvas.width = viewport.width;
               canvas.height = viewport.height;
+              const context = canvas.getContext('2d');
               page.render({ canvasContext: context, viewport: viewport }).promise.then(() => {
                 canvas.toBlob(blob => {
                   window.convertedBlob = blob;
