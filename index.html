@@ -81,13 +81,48 @@
       gap: 0.5rem;
     }
 
-    .format-btn {
+    .format-btn, .download-btn {
       background: white;
       border: 2px solid black;
       border-radius: 999px;
       padding: 0.5rem 1rem;
       font-weight: bold;
       cursor: pointer;
+      box-shadow: 2px 2px 0 black;
+    }
+
+    .preview-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+
+    .preview-box {
+      width: 300px;
+      height: 400px;
+      background: white;
+      border: 3px solid black;
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    .preview-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .preview-filename {
+      background: white;
+      padding: 0.5rem 1rem;
+      border: 2px solid black;
+      border-radius: 0 999px 999px 0;
+      font-weight: bold;
       box-shadow: 2px 2px 0 black;
     }
   </style>
@@ -112,10 +147,20 @@
       <div class="file-name" id="fileName"></div>
       <div class="controls" id="formatButtons"></div>
     </div>
+
+    <div class="preview-container" id="previewSection" style="display:none">
+      <div class="preview-box" id="previewBox">File preview here</div>
+      <div class="preview-actions">
+        <div class="preview-filename" id="previewFilename"></div>
+        <button class="download-btn" onclick="downloadFile()">Download</button>
+      </div>
+    </div>
   </main>
 
   <script>
     window.selectedFile = null;
+    window.convertedBlob = null;
+    window.convertedName = null;
 
     const formatMap = {
       'txt': ['pdf'],
@@ -148,6 +193,31 @@
       });
     }
 
+    function showPreview(blob, filename) {
+      const previewBox = document.getElementById('previewBox');
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        if (filename.endsWith('.txt')) {
+          previewBox.textContent = e.target.result.slice(0, 200);
+        } else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg') || filename.endsWith('.png')) {
+          previewBox.innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 100%;">`;
+        } else {
+          previewBox.textContent = 'Preview not supported';
+        }
+      };
+      reader.readAsDataURL(blob);
+      document.getElementById('previewFilename').textContent = filename;
+      document.getElementById('previewSection').style.display = 'flex';
+    }
+
+    function downloadFile() {
+      if (!window.convertedBlob || !window.convertedName) return alert('No file ready to download.');
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(window.convertedBlob);
+      link.download = window.convertedName;
+      link.click();
+    }
+
     async function convertFile(format) {
       if (!window.selectedFile) return alert('Please select a file first.');
       const fileName = window.selectedFile.name.split('.')[0];
@@ -158,10 +228,9 @@
         reader.onload = function (e) {
           const content = e.target.result;
           const blob = new Blob([content], { type: 'application/pdf' });
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(blob);
-          link.download = `${fileName}.pdf`;
-          link.click();
+          window.convertedBlob = blob;
+          window.convertedName = `${fileName}.pdf`;
+          showPreview(blob, window.convertedName);
         };
         reader.readAsText(window.selectedFile);
 
@@ -172,7 +241,10 @@
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({ orientation: img.width > img.height ? 'l' : 'p', unit: 'px', format: [img.width, img.height] });
             pdf.addImage(img, 'JPEG', 0, 0, img.width, img.height);
-            pdf.save(`${fileName}.pdf`);
+            const blob = pdf.output('blob');
+            window.convertedBlob = blob;
+            window.convertedName = `${fileName}.pdf`;
+            showPreview(blob, window.convertedName);
           };
           img.src = e.target.result;
         };
@@ -188,10 +260,9 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0);
             canvas.toBlob(blob => {
-              const link = document.createElement('a');
-              link.href = URL.createObjectURL(blob);
-              link.download = `${fileName}.${format}`;
-              link.click();
+              window.convertedBlob = blob;
+              window.convertedName = `${fileName}.${format}`;
+              showPreview(blob, window.convertedName);
             }, `image/${format}`);
           };
           img.src = e.target.result;
@@ -202,24 +273,20 @@
         reader.onload = function (e) {
           const typedarray = new Uint8Array(e.target.result);
           pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
-            const totalPages = pdf.numPages;
-            for (let i = 1; i <= totalPages; i++) {
-              pdf.getPage(i).then(page => {
-                const viewport = page.getViewport({ scale: 2 });
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                page.render({ canvasContext: context, viewport: viewport }).promise.then(() => {
-                  canvas.toBlob(blob => {
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = `${fileName}_page${i}.${format}`;
-                    link.click();
-                  }, `image/${format}`);
-                });
+            pdf.getPage(1).then(page => {
+              const viewport = page.getViewport({ scale: 2 });
+              const canvas = document.createElement('canvas');
+              const context = canvas.getContext('2d');
+              canvas.width = viewport.width;
+              canvas.height = viewport.height;
+              page.render({ canvasContext: context, viewport: viewport }).promise.then(() => {
+                canvas.toBlob(blob => {
+                  window.convertedBlob = blob;
+                  window.convertedName = `${fileName}_page1.${format}`;
+                  showPreview(blob, window.convertedName);
+                }, `image/${format}`);
               });
-            }
+            });
           });
         };
         reader.readAsArrayBuffer(window.selectedFile);
