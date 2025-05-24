@@ -179,6 +179,9 @@
     <div id="historyPanel"><h2>Conversion History</h2><div id="historyList"></div></div>
   </main>
   <script>
+// Ensure toggleHistory and handleFile are defined globally
+window.toggleHistory = toggleHistory;
+window.handleFile = handleFile;
 function setCookie(name, value, days) {
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
   document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + expires + '; path=/';
@@ -191,7 +194,8 @@ function getCookie(name) {
   }, '');
 }
 
-let historyList = [];
+// historyList declared once here
+var historyList = [];
 try {
   historyList = JSON.parse(getCookie('conversionHistory')) || [];
 } catch (e) {
@@ -259,7 +263,8 @@ const formatMap = {
   'svg': ['png', 'jpg', 'webp']
 };
 
-let historyList = JSON.parse(localStorage.getItem('conversionHistory')) || [];
+// historyList declared once here
+var historyList = [];
 
 function getExtension(filename) {
   return filename.split('.').pop().toLowerCase();
