@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>File Converter</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf.2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.10.1/dist/ffmpeg.min.js"></script>
   <style>
     body {
       margin: 0;
@@ -128,9 +129,9 @@
     <div class="uploader">
       <label class="upload-label" for="fileInput">
         Click to Upload or Drag and Drop<br>
-        <small>Supports: TXT, PDF, JPG, PNG, SVG, WEBP</small>
+        <small>Supports: TXT, PDF, JPG, PNG, SVG, WEBP, GIF</small>
       </label>
-      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg,.webp" onchange="handleFile(event)">
+      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg,.webp,.gif" onchange="handleFile(event)">
       <div class="file-name" id="fileName"></div>
       <div class="controls">
         <div id="formatButtons" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem;"></div>
@@ -145,6 +146,9 @@
     </div>
   </main>
   <script>
+    const { createFFmpeg, fetchFile } = FFmpeg;
+    const ffmpeg = createFFmpeg({ log: true });
+
     const formatMap = {
       'txt': ['pdf'],
       'pdf': ['png', 'jpg', 'svg'],
@@ -152,7 +156,8 @@
       'jpeg': ['png', 'webp', 'pdf'],
       'png': ['jpg', 'webp', 'pdf'],
       'webp': ['jpg', 'png'],
-      'svg': ['png', 'jpg']
+      'svg': ['png', 'jpg'],
+      'gif': ['mp4', 'webm']
     };
 
     function getExtension(filename) {
@@ -176,7 +181,7 @@
       });
     }
 
-    function convertFile(format) {
+    async function convertFile(format) {
       const file = window.selectedFile;
       if (!file) return alert('Please select a file first.');
       const ext = getExtension(file.name);
@@ -235,6 +240,17 @@
           });
         };
         reader.readAsArrayBuffer(file);
+
+      } else if (ext === 'gif' && ['mp4', 'webm'].includes(format)) {
+        if (!ffmpeg.isLoaded()) await ffmpeg.load();
+        ffmpeg.FS('writeFile', `${file.name}`, await fetchFile(file));
+        await ffmpeg.run('-i', file.name, `${fileName}.${format}`);
+        const data = ffmpeg.FS('readFile', `${fileName}.${format}`);
+        const blob = new Blob([data.buffer], { type: `video/${format}` });
+        window.convertedBlob = blob;
+        window.convertedName = `${fileName}.${format}`;
+        showPreview(blob, `${fileName}.${format}`);
+
       } else {
         alert('Unsupported conversion.');
       }
@@ -253,6 +269,8 @@
           previewBox.innerHTML = `<pre>${e.target.result}</pre>`;
         } else if (ext === 'svg') {
           previewBox.innerHTML = e.target.result;
+        } else if (['mp4', 'webm'].includes(ext)) {
+          previewBox.innerHTML = `<video controls style="width:100%"><source src="${e.target.result}" type="video/${ext}"></video>`;
         } else {
           previewBox.textContent = 'Preview not available';
         }
