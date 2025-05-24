@@ -100,7 +100,7 @@
     }
     .preview-box img, .preview-box iframe {
       width: 100%;
-      height: auto;
+      height: 600px;
     }
     .preview-actions {
       display: flex;
@@ -248,6 +248,9 @@
             const html = document.createElement('div');
             html.innerHTML = result.value;
             html.style.fontFamily = 'Times New Roman';
+            html.style.fontFamily = 'Times New Roman';
+            html.style.fontSize = '12pt';
+            html.style.lineHeight = '1.5';
             doc.html(html, {
               callback: function (doc) {
                 const blob = doc.output('blob');
