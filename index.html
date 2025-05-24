@@ -60,7 +60,7 @@
     width: 90%;
     max-width: 600px;
     padding: 2rem;
-    padding-bottom: 5rem;
+    padding-bottom: 6rem; /* allow room for hanging label */
     text-align: center;
     border-radius: 1rem;
     position: relative;
@@ -68,18 +68,20 @@
 
   .upload-label {
     position: absolute;
-    bottom: -3rem;
     left: 50%;
+    bottom: -2.5rem;
     transform: translateX(-50%);
     background: var(--accent-color);
     border: 2px dashed var(--border-color);
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 1.5rem;
     width: 80%;
+    max-width: 500px;
     cursor: pointer;
     font-weight: bold;
     text-align: center;
     box-shadow: 3px 3px 0 var(--border-color);
+    z-index: 10;
   }
 
   .file-preview {
@@ -159,7 +161,7 @@
   .custom-select {
     position: relative;
     border: 2px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 16px;
     background: var(--accent-color);
     box-shadow: 2px 2px 0 var(--border-color);
     margin-bottom: 1rem;
@@ -171,8 +173,9 @@
     padding: 0.75rem 1rem;
     font-weight: bold;
     background: var(--accent-color);
-    border-radius: 12px;
+    border-radius: 16px;
     box-sizing: border-box;
+    font-family: inherit;
   }
 
   .custom-select-options {
