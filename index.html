@@ -5,21 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>File Converter</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js">function downloadAllImages() {
-      if (!window.convertedBlob || !window.convertedName) return alert('No file ready to download.');
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(window.convertedBlob);
-      link.download = window.convertedName;
-      link.click();
-    }
       const buttons = document.querySelectorAll('#previewBox button');
       buttons.forEach(btn => {
-        if (btn.textContent.includes('Download Page')) {
+        if (btn.textContent.includes('Download')) {
           btn.click();
         }
-      });
-    }
-      });
-    }
       });
     }
   </script>
@@ -402,13 +392,6 @@
       reader.readAsDataURL(blob);
       document.getElementById('previewFilename').textContent = filename;
       document.getElementById('previewSection').style.display = 'flex';
-            if (pdf.numPages > 1) {
-              document.querySelector('.download-btn').style.display = 'block';
-              document.querySelector('.download-btn').textContent = 'Download as ZIP';
-            } else {
-              document.querySelector('.download-btn').style.display = 'block';
-              document.querySelector('.download-btn').textContent = 'Download';
-            }
     }
 
     function downloadFile() {
