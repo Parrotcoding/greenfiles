@@ -325,28 +325,6 @@
               const existing = document.querySelector('.preview-instruction');
               if (existing) existing.remove();
             }
-              previewFilename.textContent = `${fileName}.${format}`;
-              downloadBtn.style.display = 'block';
-              const canvas = document.createElement('canvas');
-              const context = canvas.getContext('2d');
-              const page = await pdf.getPage(1);
-              const viewport = page.getViewport({ scale: 2 });
-              canvas.width = viewport.width;
-              canvas.height = viewport.height;
-              await page.render({ canvasContext: context, viewport }).promise;
-              canvas.toBlob(blob => {
-                const dataUrl = canvas.toDataURL(`image/${format}`);
-                const img = document.createElement('img');
-                img.src = dataUrl;
-                img.style.maxWidth = '100%';
-                img.style.marginBottom = '0.5rem';
-                previewBox.appendChild(img);
-                window.convertedBlob = blob;
-                window.convertedName = `${fileName}.${format}`;
-              }, `image/${format}`);
-              const existing = document.querySelector('.preview-instruction');
-              if (existing) existing.remove();
-            }
               previewFilename.textContent = `${fileName}.pdf`;
               downloadBtn.style.display = 'block';
               const existing = document.querySelector('.preview-instruction');
