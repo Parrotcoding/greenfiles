@@ -50,6 +50,7 @@
     flex-direction: column;
     align-items: center;
     margin-top: 2rem;
+    position: relative;
   }
 
   .uploader {
@@ -59,35 +60,34 @@
     width: 90%;
     max-width: 600px;
     padding: 2rem;
+    padding-bottom: 5rem;
     text-align: center;
     border-radius: 1rem;
+    position: relative;
   }
 
   .upload-label {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    position: absolute;
+    bottom: -3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent-color);
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 80%;
     cursor: pointer;
     font-weight: bold;
-    border: 2px dashed var(--border-color);
-    padding: 2rem;
-    width: 100%;
-    margin-bottom: 1rem;
-    background: var(--accent-color);
-    border-radius: 12px;
-  }
-
-  .file-name {
-    font-weight: bold;
-    margin-top: 1rem;
+    text-align: center;
+    box-shadow: 3px 3px 0 var(--border-color);
   }
 
   .file-preview {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 1rem;
-    margin-top: 1rem;
+    margin-top: 4rem;
   }
 
   .file-preview img {
@@ -95,6 +95,7 @@
     width: 40px;
     object-fit: cover;
     border: 1px solid var(--border-color);
+    border-radius: 6px;
   }
 
   .format-btn,
@@ -114,7 +115,7 @@
     align-items: flex-start;
     justify-content: center;
     gap: 2rem;
-    margin-top: 2rem;
+    margin-top: 4rem;
     width: 100%;
     flex-wrap: wrap;
   }
@@ -170,7 +171,8 @@
     padding: 0.75rem 1rem;
     font-weight: bold;
     background: var(--accent-color);
-    cursor: text;
+    border-radius: 12px;
+    box-sizing: border-box;
   }
 
   .custom-select-options {
@@ -183,6 +185,7 @@
     max-height: 200px;
     overflow-y: auto;
     z-index: 100;
+    border-radius: 0 0 12px 12px;
   }
 
   .custom-select.open .custom-select-options {
@@ -246,6 +249,11 @@
   </footer>
 </body>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
+
 <script>
   const formatMap = {
     txt: ['pdf'],
@@ -265,6 +273,7 @@
   const fileLabel = document.getElementById('fileInputLabel');
   const filePreview = document.getElementById('filePreview');
   const convertBtn = document.getElementById('convertBtn');
+  let selectedFile;
 
   function createCustomSelect(wrapper, options, onSelect) {
     wrapper.innerHTML = '';
@@ -298,8 +307,8 @@
     renderOptions();
 
     input.addEventListener('input', () => renderOptions(input.value));
-
     input.addEventListener('focus', () => wrapper.classList.add('open'));
+
     document.addEventListener('click', e => {
       if (!wrapper.contains(e.target)) wrapper.classList.remove('open');
     });
@@ -315,13 +324,17 @@
   fileInput.addEventListener('change', () => {
     const file = fileInput.files[0];
     if (!file) return;
+    selectedFile = file;
 
     const reader = new FileReader();
     reader.onload = () => {
       filePreview.innerHTML = '';
-      const thumb = document.createElement('img');
-      thumb.src = reader.result;
-      filePreview.innerHTML = `<img src="${thumb.src}" alt="thumb"><strong>${file.name}</strong>`;
+      const img = document.createElement('img');
+      img.src = reader.result;
+      filePreview.appendChild(img);
+      const name = document.createElement('strong');
+      name.textContent = file.name;
+      filePreview.appendChild(name);
       filePreview.style.display = 'flex';
       fileLabel.style.display = 'none';
       convertBtn.style.display = 'inline-block';
@@ -332,10 +345,88 @@
   convertBtn.addEventListener('click', () => {
     const from = fromDiv.dataset.value;
     const to = toDiv.dataset.value;
-    if (!from || !to || !fileInput.files[0]) return alert('Missing file or format.');
-    alert(`Ready to convert ${fileInput.files[0].name} from ${from} to ${to}`);
-    // Your convertFile(from, to) goes here
+    if (!selectedFile || !from || !to) return alert('Missing info');
+    convertFile(from, to);
   });
+
+  function convertFile(from, to) {
+    const reader = new FileReader();
+    const fileName = selectedFile.name.replace(/\.[^/.]+$/, '');
+
+    if (from === 'txt' && to === 'pdf') {
+      reader.onload = e => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text(e.target.result, 10, 20);
+        const blob = doc.output('blob', { encode: true });
+        preview(blob, `${fileName}.pdf`);
+      };
+      reader.readAsText(selectedFile);
+    }
+
+    else if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(from)) {
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          if (to === 'pdf') {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ orientation: img.width > img.height ? 'landscape' : 'portrait', unit: 'px', format: [img.width, img.height] });
+            pdf.addImage(img, 'JPEG', 0, 0, img.width, img.height);
+            const blob = pdf.output('blob', { encode: true });
+            preview(blob, `${fileName}.pdf`);
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(selectedFile);
+    }
+  }
+
+  function preview(blob, name) {
+    const ext = name.split('.').pop().toLowerCase();
+    const previewBox = document.getElementById('previewBox');
+    const reader = new FileReader();
+    reader.onload = e => {
+      if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
+        previewBox.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+      } else if (ext === 'pdf') {
+        const iframe = document.createElement('iframe');
+        iframe.src = e.target.result;
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.border = 'none';
+        previewBox.innerHTML = '';
+        previewBox.appendChild(iframe);
+      }
+      document.getElementById('previewFilename').textContent = name;
+      document.getElementById('previewSection').style.display = 'flex';
+    };
+    reader.readAsDataURL(blob);
+  }
+
+  function downloadFile() {
+    const link = document.createElement('a');
+    link.href = document.querySelector('#previewBox iframe')?.src || document.querySelector('#previewBox img')?.src;
+    link.download = document.getElementById('previewFilename').textContent || 'converted';
+    link.click();
+  }
+
+  function downloadAllImages() {
+    const images = document.querySelectorAll('#previewBox img');
+    if (images.length === 0) return alert('No images to download.');
+    const zip = new JSZip();
+    const folder = zip.folder('converted_images');
+    images.forEach((img, i) => {
+      const base64 = img.src.split(',')[1];
+      folder.file(`image_${i + 1}.png`, base64, { base64: true });
+    });
+    zip.generateAsync({ type: 'blob' }).then(blob => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'converted_images.zip';
+      link.click();
+    });
+  }
 
   function switchLanguage(lang) {
     const links = {
