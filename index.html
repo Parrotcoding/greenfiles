@@ -146,32 +146,57 @@
       <option value="ko">한국어</option>
     </select>
   </header>
-  <main>
-    <div class="uploader" ondrop="dropFile(event)" ondragover="event.preventDefault()">
-      <label class="upload-label" for="fileInput">
-        Click to Upload or Drag and Drop<br>
-        <small>Supports: TXT, PDF, JPG, PNG, SVG, WEBP, BMP, DOCX</small>
-      </label>
-      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg,.webp,.bmp,.docx" onchange="handleFile(event)">
-      <div class="file-name" id="fileName"></div>
-      <div class="controls">
-        <div id="formatButtons" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem;"></div>
+
+  <main id="setupSection">
+    <div class="uploader">
+      <div class="controls" style="display: flex; flex-direction: column; gap: 1rem;">
+        <label for="fromFormat"><strong>Convert from:</strong></label>
+        <select id="fromFormat">
+          <option value="">-- Select Format --</option>
+          <option value="txt">TXT</option>
+          <option value="pdf">PDF</option>
+          <option value="jpg">JPG</option>
+          <option value="jpeg">JPEG</option>
+          <option value="png">PNG</option>
+          <option value="webp">WEBP</option>
+          <option value="bmp">BMP</option>
+          <option value="svg">SVG</option>
+          <option value="docx">DOCX</option>
+        </select>
+
+        <label for="toFormat"><strong>Convert to:</strong></label>
+        <select id="toFormat" disabled>
+          <option value="">-- Select Format --</option>
+        </select>
+
+        <label for="fileInput" id="fileInputLabel" style="display: none; cursor: pointer;">
+          <div class="upload-label">
+            Click to Upload<br><small>Only one file</small>
+          </div>
+        </label>
+        <input type="file" id="fileInput" style="display: none;">
+
+        <div class="file-name" id="fileName"></div>
+        <button class="format-btn" id="convertBtn" style="display: none;">Convert</button>
       </div>
     </div>
-    <div class="preview-container" id="previewSection" style="display:none">
-      <div class="preview-box" id="previewBox">File preview here</div>
-      <div class="preview-actions">
-        <div class="preview-filename" id="previewFilename"></div>
-        <button class="download-btn" onclick="downloadFile()">Download</button>
-        <button class="download-btn" onclick="downloadAllImages()">Download Image(s) as zip</button>
-      </div>
+  </main>
+
+  <div class="preview-container" id="previewSection" style="display:none">
+    <div class="preview-box" id="previewBox">File preview here</div>
+    <div class="preview-actions">
+      <div class="preview-filename" id="previewFilename"></div>
+      <button class="download-btn" onclick="downloadFile()">Download</button>
+      <button class="download-btn" onclick="downloadAllImages()">Download Image(s) as zip</button>
     </div>
-        <footer style="margin-top: 4rem; text-align: center; font-size: 0.9rem; color: gray; padding: 1rem;">
+  </div>
+
+  <footer style="margin-top: 4rem; text-align: center; font-size: 0.9rem; color: gray; padding: 1rem;">
     <p>All file conversions happen <strong>locally</strong> in your browser. No files are uploaded or stored on any server.</p>
     <p>This tool is generally safe for handling personal or sensitive documents.</p>
     <a href="https://github.com/Parrotcoding/greenfiles">Github</a>
   </footer>
-  </main>
+</body>
 
 <script>
   function switchLanguage(lang) {
