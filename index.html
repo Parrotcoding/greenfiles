@@ -6,6 +6,7 @@
   <title>File Converter</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
   <style>
     body {
       margin: 0;
@@ -128,9 +129,9 @@
     <div class="uploader">
       <label class="upload-label" for="fileInput">
         Click to Upload or Drag and Drop<br>
-        <small>Supports: TXT, PDF, JPG, PNG, SVG, WEBP, BMP</small>
+        <small>Supports: TXT, PDF, JPG, PNG, SVG, WEBP, BMP, DOCX</small>
       </label>
-      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg,.webp,.bmp" onchange="handleFile(event)">
+      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg,.webp,.bmp,.docx" onchange="handleFile(event)">
       <div class="file-name" id="fileName"></div>
       <div class="controls">
         <div id="formatButtons" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem;"></div>
@@ -147,7 +148,8 @@
   <script>
     const formatMap = {
       'txt': ['pdf'],
-      'pdf': ['png', 'jpg', 'svg', 'webp', 'docx'],
+      'pdf': ['png', 'jpg', 'svg', 'webp'],
+      'docx': ['pdf', 'jpg', 'png'],
       'jpg': ['png', 'webp', 'pdf', 'bmp', 'svg'],
       'jpeg': ['png', 'webp', 'pdf', 'bmp', 'svg'],
       'png': ['jpg', 'webp', 'pdf', 'bmp', 'svg'],
@@ -237,28 +239,55 @@
         };
         reader.readAsArrayBuffer(file);
 
-      } else if (ext === 'pdf' && format === 'docx') {
+      } else if (ext === 'docx' && format === 'pdf') {
         reader.onload = function (e) {
-          const typedarray = new Uint8Array(e.target.result);
-          pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
-            let textContent = '';
-            let loadPages = [];
-            for (let i = 1; i <= pdf.numPages; i++) {
-              loadPages.push(
-                pdf.getPage(i).then(page =>
-                  page.getTextContent().then(content => {
-                    textContent += content.items.map(token => token.str).join(' ') + '\n\n';
-                  })
-                )
-              );
-            }
-            Promise.all(loadPages).then(() => {
-              const blob = new Blob([textContent], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+          mammoth.convertToHtml({ arrayBuffer: e.target.result })
+            .then(result => {
+              const { jsPDF } = window.jspdf;
+              const doc = new jsPDF();
+              const text = result.value.replace(/<[^>]+>/g, '');
+              doc.text(text, 10, 20);
+              const blob = doc.output('blob');
               window.convertedBlob = blob;
-              window.convertedName = `${fileName}.docx`;
-              showPreview(blob, `${fileName}.docx`);
-            });
-          });
+              window.convertedName = `${fileName}.pdf`;
+              showPreview(blob, `${fileName}.pdf`);
+            })
+            .catch(err => alert("Conversion error: " + err));
+        };
+        reader.readAsArrayBuffer(file);
+
+      } else if (ext === 'docx' && ['jpg', 'png'].includes(format)) {
+        reader.onload = function (e) {
+          mammoth.convertToHtml({ arrayBuffer: e.target.result })
+            .then(result => {
+              const { jsPDF } = window.jspdf;
+              const doc = new jsPDF();
+              const text = result.value.replace(/<[^>]+>/g, '');
+              doc.text(text, 10, 20);
+              const pdfBlob = doc.output('blob');
+              const reader2 = new FileReader();
+              reader2.onload = function (e2) {
+                const typedarray = new Uint8Array(e2.target.result);
+                pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
+                  pdf.getPage(1).then(page => {
+                    const viewport = page.getViewport({ scale: 2 });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    page.render({ canvasContext: context, viewport }).promise.then(() => {
+                      canvas.toBlob(blob => {
+                        window.convertedBlob = blob;
+                        window.convertedName = `${fileName}.${format}`;
+                        showPreview(blob, `${fileName}.${format}`);
+                      }, `image/${format}`);
+                    });
+                  });
+                });
+              };
+              reader2.readAsArrayBuffer(pdfBlob);
+            })
+            .catch(err => alert("Conversion error: " + err));
         };
         reader.readAsArrayBuffer(file);
 
