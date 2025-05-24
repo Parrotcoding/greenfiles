@@ -298,22 +298,17 @@
                 const folder = zip.folder(`${fileName}_pages`);
                 let count = 0;
                 images.forEach((img, index) => {
-                  fetch(img.src).then(res => res.blob()).then(blob => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      const base64 = reader.result.split(',')[1];
-                      folder.file(`${fileName}_page${index + 1}.${format}`, base64, { base64: true });
-                      count++;
-                      if (count === images.length) {
-                        zip.generateAsync({ type: 'blob' }).then(zipBlob => {
-                          const link = document.createElement('a');
-                          link.href = URL.createObjectURL(zipBlob);
-                          link.download = `${fileName}_pages.zip`;
-                          link.click();
-                        });
-                      }
-                    };
-                    reader.readAsDataURL(blob);
+                  const base64 = img.src.split(',')[1];
+                  folder.file(`${fileName}_page${index + 1}.${format}`, base64, { base64: true });
+                  count++;
+                  if (count === images.length) {
+                    zip.generateAsync({ type: 'blob' }).then(zipBlob => {
+                      const link = document.createElement('a');
+                      link.href = URL.createObjectURL(zipBlob);
+                      link.download = `${fileName}_pages.zip`;
+                      link.click();
+                    });
+                  }
                   });
                 });
               };
