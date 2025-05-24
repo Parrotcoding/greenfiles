@@ -50,10 +50,6 @@
       text-align: center;
     }
 
-    .uploader input[type="file"] {
-      display: none;
-    }
-
     .upload-label {
       display: inline-block;
       cursor: pointer;
@@ -61,7 +57,9 @@
       border: 2px dashed black;
       padding: 2rem;
       width: 100%;
+      max-width: 100%;
       transition: background 0.2s;
+      text-align: center;
     }
 
     .upload-label:hover {
@@ -116,6 +114,13 @@
       justify-content: center;
       font-weight: bold;
       overflow: hidden;
+      text-align: center;
+    }
+
+    .preview-box img, .preview-box iframe {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
     }
 
     .preview-actions {
@@ -204,10 +209,23 @@
       window.selectedFile = event.target.files[0];
       if (!window.selectedFile) return;
 
-      document.getElementById('fileName').textContent = `Selected: ${window.selectedFile.name}`;
+      const img = new Image();
       const ext = getExtension(window.selectedFile.name);
-      const options = formatMap[ext] || [];
+      document.getElementById('fileName').textContent = `Selected: ${window.selectedFile.name}`;
 
+      if (['jpg', 'jpeg', 'png'].includes(ext)) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          img.onload = function () {
+            document.getElementById('dimWidth').value = img.width;
+            document.getElementById('dimHeight').value = img.height;
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(window.selectedFile);
+      }
+
+      const options = formatMap[ext] || [];
       const buttons = document.getElementById('formatButtons');
       buttons.innerHTML = '';
       options.forEach(fmt => {
@@ -223,10 +241,15 @@
       const previewBox = document.getElementById('previewBox');
       const reader = new FileReader();
       reader.onload = function (e) {
-        if (filename.endsWith('.txt') || filename.endsWith('.pdf')) {
-          previewBox.textContent = 'Preview not supported for this format.';
+        const ext = getExtension(filename);
+        if (['jpg', 'jpeg', 'png'].includes(ext)) {
+          previewBox.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+        } else if (ext === 'pdf') {
+          previewBox.innerHTML = `<iframe src="${e.target.result}" width="100%" height="100%"></iframe>`;
+        } else if (ext === 'txt') {
+          previewBox.textContent = atob(e.target.result.split(',')[1]).slice(0, 200);
         } else {
-          previewBox.innerHTML = `<img src="${e.target.result}" style="max-width: 100%; max-height: 100%;">`;
+          previewBox.textContent = 'Preview not available';
         }
       };
       reader.readAsDataURL(blob);
