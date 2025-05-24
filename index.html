@@ -222,6 +222,7 @@
         reader.onload = function (e) {
           const typedarray = new Uint8Array(e.target.result);
           pdfjsLib.getDocument({ data: typedarray }).promise.then(async pdf => {
+            const previewSection = document.getElementById('previewSection');
             const previewBox = document.getElementById('previewBox');
             previewBox.innerHTML = '';
 
@@ -236,10 +237,20 @@
 
               const dataUrl = canvas.toDataURL(`image/${format}`);
 
+              const card = document.createElement('div');
+              card.style.border = '2px solid black';
+              card.style.padding = '1rem';
+              card.style.marginBottom = '1rem';
+              card.style.background = 'white';
+              card.style.boxShadow = '3px 3px 0 black';
+              card.style.display = 'flex';
+              card.style.flexDirection = 'column';
+              card.style.alignItems = 'center';
+
               const img = document.createElement('img');
               img.src = dataUrl;
+              img.style.maxWidth = '100%';
               img.style.marginBottom = '0.5rem';
-              previewBox.appendChild(img);
 
               const downloadBtn = document.createElement('button');
               downloadBtn.textContent = `Download Page ${i}`;
@@ -250,10 +261,13 @@
                 link.download = `${fileName}_page${i}.${format}`;
                 link.click();
               };
-              previewBox.appendChild(downloadBtn);
+
+              card.appendChild(img);
+              card.appendChild(downloadBtn);
+              previewBox.appendChild(card);
             }
 
-            document.getElementById('previewSection').style.display = 'flex';
+            previewSection.style.display = 'flex';
           });
         };
         reader.readAsArrayBuffer(file);
