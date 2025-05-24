@@ -66,16 +66,27 @@
       background: #e1ffe0;
     }
 
-    .controls {
+    .file-name {
       margin-top: 1rem;
+      font-weight: bold;
     }
 
-    .controls select, .controls button {
-      margin: 0.5rem;
-      padding: 0.5rem;
+    .controls {
+      margin-top: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .format-btn {
+      background: white;
       border: 2px solid black;
-      box-shadow: 2px 2px 0 black;
+      border-radius: 999px;
+      padding: 0.5rem 1rem;
       font-weight: bold;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 black;
     }
   </style>
 </head>
@@ -93,19 +104,13 @@
     <div class="uploader">
       <label class="upload-label" for="fileInput">
         Click to Upload or Drag and Drop<br>
-        <small>Supports: TXT, JPG, PNG, SVG</small>
+        <small>Supports: TXT, PDF, JPG, PNG, SVG</small>
       </label>
-      <input type="file" id="fileInput" accept=".txt,.jpg,.jpeg,.png,.svg" onchange="handleFile(event)">
+      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg" onchange="handleFile(event)">
+      <div class="file-name" id="fileName"></div>
 
-      <div class="controls">
-        <select id="formatSelect">
-          <option value="txt">Convert to TXT</option>
-          <option value="pdf">Convert to PDF</option>
-          <option value="jpg">Convert to JPG</option>
-          <option value="png">Convert to PNG</option>
-          <option value="svg">Convert to SVG</option>
-        </select>
-        <button onclick="convertFile()">Convert</button>
+      <div class="controls" id="formatButtons">
+        <!-- Buttons will be generated dynamically -->
       </div>
     </div>
   </main>
@@ -113,17 +118,45 @@
   <script>
     let selectedFile;
 
-    function handleFile(event) {
-      selectedFile = event.target.files[0];
+    const formatMap = {
+      'txt': ['pdf'],
+      'pdf': ['txt'],
+      'jpg': ['png'],
+      'jpeg': ['png'],
+      'png': ['jpg', 'svg'],
+      'svg': ['png']
+    };
+
+    function getExtension(filename) {
+      return filename.split('.').pop().toLowerCase();
     }
 
-    function convertFile() {
+    function handleFile(event) {
+      selectedFile = event.target.files[0];
+      if (!selectedFile) return;
+
+      document.getElementById('fileName').textContent = `Selected: ${selectedFile.name}`;
+      const ext = getExtension(selectedFile.name);
+      const options = formatMap[ext] || [];
+
+      const buttons = document.getElementById('formatButtons');
+      buttons.innerHTML = '';
+      options.forEach(fmt => {
+        const btn = document.createElement('button');
+        btn.className = 'format-btn';
+        btn.textContent = `Convert to .${fmt}`;
+        btn.onclick = () => convertFile(fmt);
+        buttons.appendChild(btn);
+      });
+    }
+
+    function convertFile(format) {
       if (!selectedFile) return alert('Please select a file first.');
-      const format = document.getElementById('formatSelect').value;
       const fileName = selectedFile.name.split('.')[0];
       const reader = new FileReader();
+      const ext = getExtension(selectedFile.name);
 
-      if (format === 'txt' || format === 'pdf') {
+      if (['txt', 'pdf'].includes(ext) && ['txt', 'pdf'].includes(format)) {
         reader.onload = function (e) {
           const content = e.target.result;
           let blob;
@@ -142,7 +175,7 @@
         };
         reader.readAsText(selectedFile);
 
-      } else if (['jpg', 'png', 'svg'].includes(format)) {
+      } else if (['jpg', 'jpeg', 'png', 'svg'].includes(ext) && ['jpg', 'jpeg', 'png', 'svg'].includes(format)) {
         const img = new Image();
         reader.onload = function (e) {
           img.onload = function () {
@@ -162,7 +195,7 @@
         };
         reader.readAsDataURL(selectedFile);
       } else {
-        alert('Unsupported format.');
+        alert('Unsupported conversion.');
       }
     }
   </script>
