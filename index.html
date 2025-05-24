@@ -4,7 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>File Converter</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js">function downloadAllImages() {
+      const buttons = document.querySelectorAll('#previewBox button');
+      buttons.forEach(btn => {
+        if (btn.textContent.includes('Download')) {
+          btn.click();
+        }
+      });
+    }
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -142,7 +150,7 @@
       <div class="preview-box" id="previewBox">File preview here</div>
       <div class="preview-actions">
         <div class="preview-filename" id="previewFilename"></div>
-        <button class="download-btn" onclick="downloadFile()">Download</button>
+        <button class="download-btn" onclick="downloadAllImages()">Download All</button>
       </div>
     </div>
   </main>
@@ -255,7 +263,11 @@
               card.style.display = 'flex';
               card.style.justifyContent = 'center';
               card.style.alignItems = 'center';
-              card.textContent = `Page ${i}`;
+              const img = document.createElement('img');
+              img.src = dataUrl;
+              img.style.maxWidth = '100%';
+              img.style.maxHeight = '100%';
+              card.appendChild(img);
 
               const controls = document.createElement('div');
               controls.style.display = 'flex';
