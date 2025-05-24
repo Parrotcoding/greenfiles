@@ -8,7 +8,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
   <style>
     body {
       margin: 0;
@@ -133,7 +132,7 @@
         Click to Upload or Drag and Drop<br>
         <small>Supports: TXT, PDF, JPG, PNG, SVG, WEBP, BMP, DOCX</small>
       </label>
-      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg,.webp,.bmp,.docx">
+      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg,.webp,.bmp,.docx" onchange="handleFile(event)">
       <div class="file-name" id="fileName"></div>
       <div class="controls">
         <div id="formatButtons" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem;"></div>
@@ -147,7 +146,9 @@
       </div>
     </div>
   </main>
-  <script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
+<script>
     const formatMap = {
       'txt': ['pdf'],
       'pdf': ['png', 'jpg', 'svg', 'webp'],
@@ -227,81 +228,84 @@
             const previewBox = document.getElementById('previewBox');
             const previewFilename = document.getElementById('previewFilename');
             const downloadBtn = document.querySelector('.download-btn');
+            const instructionBox = document.querySelector('.preview-instruction');
             previewBox.innerHTML = '';
             if (pdf.numPages > 1) {
-              previewFilename.textContent = file.name.replace(/\.[^/.]+$/, '');
-              downloadBtn.style.display = 'none';
-              const note = document.createElement('div');
-              note.className = 'preview-instruction';
-              note.textContent = 'Click each page\'s download button to save it.';
-              note.style.fontWeight = 'bold';
-              note.style.marginTop = '1rem';
-              note.id = 'multi-pdf-note';
-              document.querySelector('.preview-actions').appendChild(note);
-            }
+      previewFilename.textContent = file.name.replace(/\.[^/.]+$/, '');
+      downloadBtn.style.display = 'none';
+      previewFilename.textContent = file.name.replace(/\.[^/.]+$/, '');
+      if (!instruction) {
+        const note = document.createElement('div');
+        note.className = 'preview-instruction';
+        note.textContent = 'Click each page\'s download button to save it, or use "Download as ZIP" below.';
+        note.style.fontWeight = 'bold';
+        note.style.marginTop = '1rem';
+        note.id = 'multi-pdf-note';
+        document.querySelector('.preview-actions').appendChild(note);
+      }
 
-            for (let i = 1; i <= pdf.numPages; i++) {
-              const page = await pdf.getPage(i);
-              const viewport = page.getViewport({ scale: 2 });
-              const canvas = document.createElement('canvas');
-              canvas.width = viewport.width;
-              canvas.height = viewport.height;
-              const context = canvas.getContext('2d');
-              await page.render({ canvasContext: context, viewport }).promise;
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const context = canvas.getContext('2d');
+        await page.render({ canvasContext: context, viewport }).promise;
 
-              const dataUrl = canvas.toDataURL(`image/${format}`);
+        const dataUrl = canvas.toDataURL(`image/${format}`);
 
-              const wrapper = document.createElement('div');
-              wrapper.style.display = 'flex';
-              wrapper.style.alignItems = 'center';
-              wrapper.style.justifyContent = 'center';
-              wrapper.style.gap = '2rem';
-              wrapper.style.marginBottom = '2rem';
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.justifyContent = 'center';
+        wrapper.style.gap = '2rem';
+        wrapper.style.marginBottom = '2rem';
 
-              const card = document.createElement('div');
-              card.style.border = '2px solid black';
-              card.style.padding = '1rem';
-              card.style.background = 'white';
-              card.style.boxShadow = '3px 3px 0 black';
-              card.style.borderRadius = '1rem';
-              card.style.width = '300px';
-              card.style.height = '400px';
-              card.style.display = 'flex';
-              card.style.justifyContent = 'center';
-              card.style.alignItems = 'center';
+        const card = document.createElement('div');
+        card.style.border = '2px solid black';
+        card.style.padding = '1rem';
+        card.style.background = 'white';
+        card.style.boxShadow = '3px 3px 0 black';
+        card.style.borderRadius = '1rem';
+        card.style.width = '300px';
+        card.style.height = '400px';
+        card.style.display = 'flex';
+        card.style.justifyContent = 'center';
+        card.style.alignItems = 'center';
 
-              const img = document.createElement('img');
-              img.src = dataUrl;
-              img.style.maxWidth = '100%';
-              img.style.maxHeight = '100%';
-              card.appendChild(img);
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '100%';
+        card.appendChild(img);
 
-              const controls = document.createElement('div');
-              controls.style.display = 'flex';
-              controls.style.flexDirection = 'column';
-              controls.style.alignItems = 'flex-start';
-              controls.style.justifyContent = 'center';
-              controls.style.gap = '1rem';
+        const controls = document.createElement('div');
+        controls.style.display = 'flex';
+        controls.style.flexDirection = 'column';
+        controls.style.alignItems = 'flex-start';
+        controls.style.justifyContent = 'center';
+        controls.style.gap = '1rem';
 
-              const filenameBox = document.createElement('div');
-              filenameBox.className = 'preview-filename';
-              filenameBox.textContent = `${file.name.replace(/\.[^/.]+$/, '')}_page${i}.${format}`;
+        const filenameBox = document.createElement('div');
+        filenameBox.className = 'preview-filename';
+        filenameBox.textContent = `${file.name.replace(/\.[^/.]+$/, '')}_page${i}.${format}`;
 
-              const pageDownloadBtn = document.createElement('button');
-              pageDownloadBtn.textContent = `Download`;
-              pageDownloadBtn.className = 'format-btn';
-              pageDownloadBtn.onclick = () => {
-                const link = document.createElement('a');
-                link.href = dataUrl;
-                link.download = `${file.name.replace(/\.[^/.]+$/, '')}_page${i}.${format}`;
-                link.click();
-              };
+        const pageDownloadBtn = document.createElement('button');
+        pageDownloadBtn.textContent = `Download`;
+        pageDownloadBtn.className = 'format-btn';
+        pageDownloadBtn.onclick = () => {
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = `${file.name.replace(/\.[^/.]+$/, '')}_page${i}.${format}`;
+          link.click();
+        };
 
-              controls.appendChild(filenameBox);
-              controls.appendChild(pageDownloadBtn);
-              wrapper.appendChild(card);
-              wrapper.appendChild(controls);
-              previewBox.appendChild(wrapper);
+        controls.appendChild(filenameBox);
+        controls.appendChild(pageDownloadBtn);
+        wrapper.appendChild(card);
+        wrapper.appendChild(controls);
+        previewBox.appendChild(wrapper);
             }
 
             previewSection.style.display = 'flex';
@@ -311,11 +315,12 @@
 
       } else if (ext === 'docx' && format === 'pdf') {
         reader.onload = function (e) {
-          mammoth.convertToHtml({ arrayBuffer: e.target.result }).then(result => {
+          mammoth.convertToHtml({ arrayBuffer: e.target.result, styleMap: ["p[style-name='Heading 1'] => h1:fresh", "p[style-name='Heading 2'] => h2:fresh"] }).then(result => {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const html = document.createElement('div');
             html.innerHTML = result.value;
+            html.style.fontFamily = 'Times New Roman';
             html.style.fontFamily = 'Times New Roman';
             html.style.fontSize = '12pt';
             html.style.lineHeight = '1.5';
@@ -373,30 +378,99 @@
         reader.readAsArrayBuffer(file);
 
       } else {
-        alert('Unsupported conversion.');
-      }
-    }
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const context = canvas.getContext('2d');
+      await page.render({ canvasContext: context, viewport }).promise;
 
-    function showPreview(blob, filename) {
-      const previewBox = document.getElementById('previewBox');
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const ext = getExtension(filename);
-        if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
-          previewBox.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-        } else if (ext === 'pdf') {
-          previewBox.innerHTML = `<iframe src="${e.target.result}" width="100%" height="100%" style="border:none;"></iframe>`;
-        } else if (ext === 'txt') {
-          previewBox.innerHTML = `<pre>${e.target.result}</pre>`;
-        } else if (ext === 'svg') {
-          previewBox.innerHTML = e.target.result;
-        } else {
-          previewBox.textContent = 'Preview not available';
-        }
+      const dataUrl = canvas.toDataURL(`image/${format}`);
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.style.maxWidth = '100%';
+      img.style.marginBottom = '0.5rem';
+      previewBox.appendChild(img);
+
+      previewFilename.textContent = `${file.name.replace(/\.[^/.]+$/, '')}.${format}`;
+      downloadBtn.style.display = 'block';
+      canvas.toBlob(blob => {
+        window.convertedBlob = blob;
+        window.convertedName = `${file.name.replace(/\.[^/.]+$/, '')}.${format}`;
+      }, `image/${format}`);
+
+      const existing = document.querySelector('.preview-instruction');
+      if (existing) existing.remove();
+      const zipBtn = document.getElementById('zipDownloadBtn');
+      if (zipBtn) zipBtn.remove();
+    }
+    document.getElementById('previewSection').style.display = 'flex';
+    if (!document.getElementById('zipDownloadBtn')) {
+      const zipBtn = document.createElement('button');
+      zipBtn.textContent = 'Download as ZIP';
+      zipBtn.className = 'format-btn';
+      zipBtn.id = 'zipDownloadBtn';
+      zipBtn.onclick = () => {
+        const zip = new JSZip();
+        const folder = zip.folder(file.name.replace(/\.[^/.]+$/, '') + '_pages');
+        const images = document.querySelectorAll('#previewBox img');
+        let count = 0;
+        images.forEach((img, index) => {
+          const base64 = img.src.split(',')[1];
+          folder.file(`${file.name.replace(/\.[^/.]+$/, '')}_page${index + 1}.${format}`, base64, { base64: true });
+          count++;
+          if (count === images.length) {
+            zip.generateAsync({ type: 'blob' }).then(zipBlob => {
+              const link = document.createElement('a');
+              link.href = URL.createObjectURL(zipBlob);
+              link.download = `${file.name.replace(/\.[^/.]+$/, '')}_pages.zip`;
+              link.click();
+            });
+          }
+        });
       };
-      reader.readAsDataURL(blob);
-      document.getElementById('previewFilename').textContent = filename;
-      document.getElementById('previewSection').style.display = 'flex';
+      document.querySelector('.preview-actions').appendChild(zipBtn);
+    }
+    if (!document.getElementById('zipDownloadBtn')) {
+      const zipBtn = document.createElement('button');
+      zipBtn.textContent = 'Download as ZIP';
+      zipBtn.className = 'format-btn';
+      zipBtn.id = 'zipDownloadBtn';
+      zipBtn.onclick = () => {
+        const zip = new JSZip();
+        const folder = zip.folder(file.name.replace(/\.[^/.]+$/, '') + '_pages');
+        const images = document.querySelectorAll('#previewBox img');
+        let count = 0;
+        images.forEach((img, index) => {
+          const base64 = img.src.split(',')[1];
+          folder.file(`${file.name.replace(/\.[^/.]+$/, '')}_page${index + 1}.${format}`, base64, { base64: true });
+          count++;
+          if (count === images.length) {
+            zip.generateAsync({ type: 'blob' }).then(zipBlob => {
+              const link = document.createElement('a');
+              link.href = URL.createObjectURL(zipBlob);
+              link.download = `${file.name.replace(/\.[^/.]+$/, '')}_pages.zip`;
+              link.click();
+            });
+          }
+        });
+      };
+      document.querySelector('.preview-actions').appendChild(zipBtn);
+    }
+            const previewFilename = document.getElementById('previewFilename');
+            if (pdf.numPages > 1) {
+              previewFilename.textContent = `${fileName}`;
+              document.querySelector('.download-btn').style.display = 'none';
+              const instruction = document.createElement('div');
+              instruction.textContent = 'Click each page\'s download button to save it.';
+              instruction.style.fontWeight = 'bold';
+              instruction.style.marginTop = '1rem';
+              document.querySelector('.preview-actions').appendChild(instruction);
+            } else {
+              previewFilename.textContent = `${fileName}.pdf`;
+              document.querySelector('.download-btn').style.display = 'block';
+            }
     }
 
     function downloadFile() {
@@ -406,10 +480,6 @@
       link.download = window.convertedName;
       link.click();
     }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('fileInput').addEventListener('change', handleFile);
-    });
   </script>
 </body>
 </html>
