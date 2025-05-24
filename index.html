@@ -179,6 +179,22 @@
     </div>
   </main>
   <script>
+    function handleFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      window.selectedFile = file;
+      document.getElementById('fileName').textContent = `Selected: ${file.name}`;
+      const ext = file.name.split('.').pop().toLowerCase();
+      const formatButtons = document.getElementById('formatButtons');
+      formatButtons.innerHTML = '';
+      (formatMap[ext] || []).forEach(fmt => {
+        const btn = document.createElement('button');
+        btn.className = 'format-btn';
+        btn.textContent = `Convert to .${fmt}`;
+        btn.onclick = () => convertFile(fmt);
+        formatButtons.appendChild(btn);
+      });
+    }
     const formatMap = {
       'txt': ['pdf'],
       'pdf': ['png', 'jpg', 'svg', 'webp'],
@@ -375,3 +391,4 @@
   </script>
 </body>
 </html>
+
