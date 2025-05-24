@@ -4,7 +4,39 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>File Converter</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js">const zip = new JSZip();
+
+      } else if (ext === 'pdf' && ['png', 'jpg', 'webp'].includes(format)) {
+        reader.onload = function (e) {
+          const typedarray = new Uint8Array(e.target.result);
+          pdfjsLib.getDocument({ data: typedarray }).promise.then(async pdf => {
+            const previewBox = document.getElementById('previewBox');
+            previewBox.innerHTML = '';
+            const folder = zip.folder(`${fileName}_pages`);
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const viewport = page.getViewport({ scale: 2 });
+              const canvas = document.createElement('canvas');
+              const context = canvas.getContext('2d');
+              canvas.width = viewport.width;
+              canvas.height = viewport.height;
+              await page.render({ canvasContext: context, viewport }).promise;
+              const dataUrl = canvas.toDataURL(`image/${format}`);
+              const img = document.createElement('img');
+              img.src = dataUrl;
+              img.style.marginBottom = '1rem';
+              previewBox.appendChild(img);
+              const base64Data = dataUrl.split(',')[1];
+              folder.file(`${fileName}_page${i}.${format}`, base64Data, { base64: true });
+            }
+            zip.generateAsync({ type: "blob" }).then(function (content) {
+              window.convertedBlob = content;
+              window.convertedName = `${fileName}_pages.zip`;
+            });
+            document.getElementById('previewSection').style.display = 'flex';
+          });
+        };
+        reader.readAsArrayBuffer(file);
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -100,7 +132,7 @@
     }
     .preview-box img, .preview-box iframe {
       width: 100%;
-      height: auto;
+      height: 100%;
     }
     .preview-actions {
       display: flex;
@@ -116,6 +148,7 @@
       box-shadow: 2px 2px 0 black;
     }
   </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 </head>
 <body>
   <header>
@@ -248,11 +281,17 @@
             const html = document.createElement('div');
             html.innerHTML = result.value;
             doc.html(html, {
-              callback: function (doc) {
-                const blob = doc.output('blob');
-                window.convertedBlob = blob;
-                window.convertedName = `${fileName}.pdf`;
-                showPreview(blob, `${fileName}.pdf`);
+            html2canvas: { scale: 2, useCORS: true },
+            autoPaging: true,
+            callback: function (doc) {
+              const blob = doc.output('blob');
+              window.convertedBlob = blob;
+              window.convertedName = `${fileName}.pdf`;
+              showPreview(blob, `${fileName}.pdf`);
+            },
+            x: 10,
+            y: 10
+          });
               },
               x: 10,
               y: 10
@@ -337,3 +376,4 @@
   </script>
 </body>
 </html>
+
