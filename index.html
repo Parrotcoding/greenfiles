@@ -85,28 +85,26 @@
     }
     .preview-container {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       gap: 2rem;
       margin-top: 2rem;
+      width: 100%;
     }
     .preview-box {
-      width: 300px;
-      height: 400px;
+      width: 50%;
+      max-width: 600px;
+      height: 500px;
       background: white;
       border: 3px solid black;
       border-radius: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      overflow: auto;
+      padding: 1rem;
       font-weight: bold;
-      overflow: hidden;
-      text-align: center;
     }
     .preview-box img, .preview-box iframe {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
+      width: 100%;
+      height: auto;
     }
     .preview-actions {
       display: flex;
@@ -179,17 +177,14 @@
       if (unit === 'in') return px / dpi;
       return px;
     }
-
     let originalWidth = 0;
     let originalHeight = 0;
-
     function handleFile(event) {
-      window.selectedFile = event.target.files[0];
-      if (!window.selectedFile) return;
-
-      const ext = getExtension(window.selectedFile.name);
-      document.getElementById('fileName').textContent = `Selected: ${window.selectedFile.name}`;
-
+      const file = event.target.files[0];
+      if (!file) return;
+      window.selectedFile = file;
+      document.getElementById('fileName').textContent = `Selected: ${file.name}`;
+      const ext = getExtension(file.name);
       if (['jpg', 'jpeg', 'png'].includes(ext)) {
         const reader = new FileReader();
         const img = new Image();
@@ -197,30 +192,25 @@
           img.onload = function () {
             originalWidth = img.width;
             originalHeight = img.height;
-            const aspectRatio = originalWidth / originalHeight;
-            const width = 300;
-            const height = Math.round(width / aspectRatio);
             const unit = 'in';
-            document.getElementById('dimWidth').value = pxToUnit(width, unit).toFixed(2);
-            document.getElementById('dimHeight').value = pxToUnit(height, unit).toFixed(2);
+            document.getElementById('dimWidth').value = pxToUnit(originalWidth, unit).toFixed(2);
+            document.getElementById('dimHeight').value = pxToUnit(originalHeight, unit).toFixed(2);
             document.getElementById('dimUnit').value = unit;
           };
           img.src = e.target.result;
         };
-        reader.readAsDataURL(window.selectedFile);
+        reader.readAsDataURL(file);
       }
-
-      const options = {
+      const formatMap = {
         'txt': ['pdf'],
         'pdf': ['png', 'jpg'],
         'jpg': ['png', 'pdf'],
         'jpeg': ['png', 'pdf'],
         'png': ['jpg', 'pdf']
-      }[ext] || [];
-
+      };
       const buttons = document.getElementById('formatButtons');
       buttons.innerHTML = '';
-      options.forEach(fmt => {
+      (formatMap[ext] || []).forEach(fmt => {
         const btn = document.createElement('button');
         btn.className = 'format-btn';
         btn.textContent = `Convert to .${fmt}`;
@@ -228,58 +218,15 @@
         buttons.appendChild(btn);
       });
     }
-
-    function showPreview(blob, filename) {
-      const previewBox = document.getElementById('previewBox');
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const ext = getExtension(filename);
-        if (['jpg', 'jpeg', 'png'].includes(ext)) {
-          previewBox.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-        } else if (ext === 'pdf') {
-          previewBox.innerHTML = `<iframe src="${e.target.result}" width="100%" height="100%"></iframe>`;
-        } else if (ext === 'txt') {
-          previewBox.textContent = atob(e.target.result.split(',')[1]).slice(0, 200);
-        } else {
-          previewBox.textContent = 'Preview not available';
-        }
-      };
-      reader.readAsDataURL(blob);
-      document.getElementById('previewFilename').textContent = filename;
-      document.getElementById('previewSection').style.display = 'flex';
-    }
-
-    function downloadFile() {
-      if (!window.convertedBlob || !window.convertedName) return alert('No file ready to download.');
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(window.convertedBlob);
-      link.download = window.convertedName;
-      link.click();
-    }
-
-    async function convertFile(format) {
+    function convertFile(format) {
       const file = window.selectedFile;
       if (!file) return alert('Please select a file first.');
-
-      const fileName = file.name.split('.')[0];
       const ext = getExtension(file.name);
       const reader = new FileReader();
-
       const unit = document.getElementById('dimUnit').value;
-      let width = unitToPx(Number(document.getElementById('dimWidth').value || 300), unit);
-      let height = unitToPx(Number(document.getElementById('dimHeight').value || 400), unit);
-
-      // adjust dimensions to maintain original aspect ratio
-      const targetAspect = width / height;
-      const originalAspect = originalWidth / originalHeight;
-      if (Math.abs(targetAspect - originalAspect) > 0.01) {
-        if (targetAspect > originalAspect) {
-          width = height * originalAspect;
-        } else {
-          height = width / originalAspect;
-        }
-      }
-
+      const width = unitToPx(Number(document.getElementById('dimWidth').value), unit);
+      const height = unitToPx(Number(document.getElementById('dimHeight').value), unit);
+      const fileName = file.name.split('.')[0];
       if (ext === 'txt' && format === 'pdf') {
         reader.onload = function (e) {
           const { jsPDF } = window.jspdf;
@@ -291,7 +238,6 @@
           showPreview(blob, window.convertedName);
         };
         reader.readAsText(file);
-
       } else if (['jpg', 'jpeg', 'png'].includes(ext) && format === 'pdf') {
         reader.onload = function (e) {
           const img = new Image();
@@ -307,7 +253,6 @@
           img.src = e.target.result;
         };
         reader.readAsDataURL(file);
-
       } else if (['jpg', 'jpeg', 'png'].includes(ext) && ['jpg', 'jpeg', 'png'].includes(format)) {
         reader.onload = function (e) {
           const img = new Image();
@@ -326,18 +271,17 @@
           img.src = e.target.result;
         };
         reader.readAsDataURL(file);
-
       } else if (ext === 'pdf' && ['png', 'jpg'].includes(format)) {
         reader.onload = function (e) {
           const typedarray = new Uint8Array(e.target.result);
           pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
             pdf.getPage(1).then(page => {
-              const viewport = page.getViewport({ scale: 2 });
+              const viewport = page.getViewport({ scale: 1.5 });
               const canvas = document.createElement('canvas');
               canvas.width = viewport.width;
               canvas.height = viewport.height;
               const context = canvas.getContext('2d');
-              page.render({ canvasContext: context, viewport: viewport }).promise.then(() => {
+              page.render({ canvasContext: context, viewport }).promise.then(() => {
                 canvas.toBlob(blob => {
                   window.convertedBlob = blob;
                   window.convertedName = `${fileName}_page1.${format}`;
@@ -348,10 +292,35 @@
           });
         };
         reader.readAsArrayBuffer(file);
-
       } else {
         alert('Unsupported conversion.');
       }
+    }
+    function showPreview(blob, filename) {
+      const previewBox = document.getElementById('previewBox');
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const ext = getExtension(filename);
+        if (['jpg', 'jpeg', 'png'].includes(ext)) {
+          previewBox.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+        } else if (ext === 'pdf') {
+          previewBox.innerHTML = `<iframe src="${e.target.result}" style="width:100%; height:100%; border:none;"></iframe>`;
+        } else if (ext === 'txt') {
+          previewBox.innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${atob(e.target.result.split(',')[1])}</pre>`;
+        } else {
+          previewBox.textContent = 'Preview not available';
+        }
+      };
+      reader.readAsDataURL(blob);
+      document.getElementById('previewFilename').textContent = filename;
+      document.getElementById('previewSection').style.display = 'flex';
+    }
+    function downloadFile() {
+      if (!window.convertedBlob || !window.convertedName) return alert('No file ready to download.');
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(window.convertedBlob);
+      link.download = window.convertedName;
+      link.click();
     }
   </script>
 </body>
