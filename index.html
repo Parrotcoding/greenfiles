@@ -222,13 +222,13 @@
 
   <main id="setupSection">
     <div class="uploader">
-      <label><strong>Convert from:</strong></label>
+      <label for="fromFormat">Convert from:</label>
       <div class="custom-select" id="fromFormat" data-placeholder="Select format"></div>
 
-      <label><strong>Convert to:</strong></label>
+      <label for="toFormat">Convert to:</label>
       <div class="custom-select" id="toFormat" data-placeholder="Select format"></div>
 
-      <label for="fileInput" id="fileInputLabel" class="upload-label" style="display: none;">
+      <label for="fileInput" id="fileInputLabel" class="upload-label">
         Click to Upload<br><small>Only one file</small>
       </label>
       <input type="file" id="fileInput" style="display: none;">
@@ -260,6 +260,57 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 
 <script>
+  const translations = {
+    fr: {
+      convertFrom: 'Convertir de :',
+      convertTo: 'Convertir en :',
+      upload: 'Cliquez pour téléverser<br><small>Un seul fichier</small>',
+      convert: 'Convertir',
+      preview: 'Aperçu du fichier ici',
+      download: 'Télécharger',
+      downloadZip: 'Télécharger toutes les images',
+      footer1: 'Toutes les conversions se font <strong>localement</strong> dans votre navigateur.',
+      footer2: 'Aucun fichier n’est téléversé ni stocké sur un serveur.'
+    },
+    es: {
+      convertFrom: 'Convertir desde:',
+      convertTo: 'Convertir a:',
+      upload: 'Haz clic para subir<br><small>Solo un archivo</small>',
+      convert: 'Convertir',
+      preview: 'Vista previa del archivo aquí',
+      download: 'Descargar',
+      downloadZip: 'Descargar todas las imágenes',
+      footer1: 'Todas las conversiones se realizan <strong>localmente</strong> en tu navegador.',
+      footer2: 'No se suben ni almacenan archivos en ningún servidor.'
+    },
+    ko: {
+      convertFrom: '변환할 형식:',
+      convertTo: '변환 대상:',
+      upload: '업로드하려면 클릭<br><small>하나의 파일만</small>',
+      convert: '변환하기',
+      preview: '파일 미리보기',
+      download: '다운로드',
+      downloadZip: '모든 이미지 다운로드',
+      footer1: '모든 파일 변환은 <strong>브라우저 내</strong>에서 이루어집니다.',
+      footer2: '파일이 서버에 업로드되거나 저장되지 않습니다.'
+    }
+  };
+
+  function switchLanguage(lang) {
+    const t = translations[lang];
+    if (!t) return;
+    document.querySelector('label[for="fromFormat"]').innerHTML = t.convertFrom;
+    document.querySelector('label[for="toFormat"]').innerHTML = t.convertTo;
+    document.getElementById('fileInputLabel').innerHTML = t.upload;
+    document.getElementById('convertBtn').textContent = t.convert;
+    document.getElementById('previewBox').textContent = t.preview;
+    document.querySelector('#previewSection button:nth-of-type(1)').textContent = t.download;
+    document.querySelector('#previewSection button:nth-of-type(2)').textContent = t.downloadZip;
+    document.querySelector('footer p:nth-of-type(1)').innerHTML = t.footer1;
+    document.querySelector('footer p:nth-of-type(2)').innerHTML = t.footer2;
+  }
+
+  // File format mapping and state
   const formatMap = {
     txt: ['pdf'],
     pdf: ['png', 'jpg', 'webp'],
@@ -272,24 +323,15 @@
     svg: ['png', 'jpg', 'webp']
   };
 
-  const fromDiv = document.getElementById('fromFormat');
-  const toDiv = document.getElementById('toFormat');
-  const fileInput = document.getElementById('fileInput');
-  const fileLabel = document.getElementById('fileInputLabel');
-  const filePreview = document.getElementById('filePreview');
-  const convertBtn = document.getElementById('convertBtn');
   let selectedFile;
 
   function createCustomSelect(wrapper, options, onSelect) {
     wrapper.innerHTML = '';
-
     const input = document.createElement('input');
     input.className = 'select-search';
     input.setAttribute('placeholder', wrapper.getAttribute('data-placeholder') || 'Select');
-
     const menu = document.createElement('div');
     menu.className = 'custom-select-options';
-
     wrapper.appendChild(input);
     wrapper.appendChild(menu);
 
@@ -310,17 +352,22 @@
     };
 
     renderOptions();
-
     input.addEventListener('input', () => renderOptions(input.value));
     input.addEventListener('focus', () => wrapper.classList.add('open'));
-
     document.addEventListener('click', e => {
       if (!wrapper.contains(e.target)) wrapper.classList.remove('open');
     });
   }
 
+  const fromDiv = document.getElementById('fromFormat');
+  const toDiv = document.getElementById('toFormat');
+  const fileInput = document.getElementById('fileInput');
+  const fileLabel = document.getElementById('fileInputLabel');
+  const filePreview = document.getElementById('filePreview');
+  const convertBtn = document.getElementById('convertBtn');
+
   createCustomSelect(fromDiv, Object.keys(formatMap), fromSelected => {
-    createCustomSelect(toDiv, formatMap[fromSelected], toSelected => {
+    createCustomSelect(toDiv, formatMap[fromSelected], () => {
       fileInput.setAttribute('accept', '.' + fromSelected);
       fileLabel.style.display = 'block';
     });
@@ -330,7 +377,6 @@
     const file = fileInput.files[0];
     if (!file) return;
     selectedFile = file;
-
     const reader = new FileReader();
     reader.onload = () => {
       filePreview.innerHTML = '';
@@ -363,13 +409,11 @@
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         doc.text(e.target.result, 10, 20);
-        const blob = doc.output('blob', { encode: true });
+        const blob = doc.output('blob');
         preview(blob, `${fileName}.pdf`);
       };
       reader.readAsText(selectedFile);
-    }
-
-    else if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(from)) {
+    } else if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(from)) {
       reader.onload = e => {
         const img = new Image();
         img.onload = () => {
@@ -377,7 +421,7 @@
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({ orientation: img.width > img.height ? 'landscape' : 'portrait', unit: 'px', format: [img.width, img.height] });
             pdf.addImage(img, 'JPEG', 0, 0, img.width, img.height);
-            const blob = pdf.output('blob', { encode: true });
+            const blob = pdf.output('blob');
             preview(blob, `${fileName}.pdf`);
           }
         };
@@ -395,13 +439,7 @@
       if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
         previewBox.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
       } else if (ext === 'pdf') {
-        const iframe = document.createElement('iframe');
-        iframe.src = e.target.result;
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.border = 'none';
-        previewBox.innerHTML = '';
-        previewBox.appendChild(iframe);
+        previewBox.innerHTML = `<iframe src="${e.target.result}" style="width:100%; height:100%; border:none;"></iframe>`;
       }
       document.getElementById('previewFilename').textContent = name;
       document.getElementById('previewSection').style.display = 'flex';
@@ -432,15 +470,4 @@
       link.click();
     });
   }
-
-  function switchLanguage(lang) {
-    const links = {
-      fr: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=fr&_x_tr_hl=en&_x_tr_pto=wapp',
-      es: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=es&_x_tr_hl=en&_x_tr_pto=wapp',
-      ko: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=ko&_x_tr_hl=en&_x_tr_pto=wapp'
-    };
-    if (links[lang]) window.location.href = links[lang];
-  }
 </script>
-</body>
-</html>
