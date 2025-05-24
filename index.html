@@ -237,23 +237,39 @@
 
               const dataUrl = canvas.toDataURL(`image/${format}`);
 
+              const wrapper = document.createElement('div');
+              wrapper.style.display = 'flex';
+              wrapper.style.alignItems = 'center';
+              wrapper.style.justifyContent = 'center';
+              wrapper.style.gap = '2rem';
+              wrapper.style.marginBottom = '2rem';
+
               const card = document.createElement('div');
               card.style.border = '2px solid black';
               card.style.padding = '1rem';
-              card.style.marginBottom = '1rem';
               card.style.background = 'white';
               card.style.boxShadow = '3px 3px 0 black';
+              card.style.borderRadius = '1rem';
+              card.style.width = '300px';
+              card.style.height = '400px';
               card.style.display = 'flex';
-              card.style.flexDirection = 'column';
+              card.style.justifyContent = 'center';
               card.style.alignItems = 'center';
+              card.textContent = `Page ${i}`;
 
-              const img = document.createElement('img');
-              img.src = dataUrl;
-              img.style.maxWidth = '100%';
-              img.style.marginBottom = '0.5rem';
+              const controls = document.createElement('div');
+              controls.style.display = 'flex';
+              controls.style.flexDirection = 'column';
+              controls.style.alignItems = 'flex-start';
+              controls.style.justifyContent = 'center';
+              controls.style.gap = '1rem';
+
+              const filenameBox = document.createElement('div');
+              filenameBox.className = 'preview-filename';
+              filenameBox.textContent = `${fileName}_page${i}.${format}`;
 
               const downloadBtn = document.createElement('button');
-              downloadBtn.textContent = `Download Page ${i}`;
+              downloadBtn.textContent = `Download`;
               downloadBtn.className = 'format-btn';
               downloadBtn.onclick = () => {
                 const link = document.createElement('a');
@@ -262,9 +278,12 @@
                 link.click();
               };
 
-              card.appendChild(img);
-              card.appendChild(downloadBtn);
-              previewBox.appendChild(card);
+              controls.appendChild(filenameBox);
+              controls.appendChild(downloadBtn);
+
+              wrapper.appendChild(card);
+              wrapper.appendChild(controls);
+              previewBox.appendChild(wrapper);
             }
 
             previewSection.style.display = 'flex';
