@@ -44,7 +44,6 @@
       max-width: 600px;
       padding: 2rem;
       text-align: center;
-      position: relative;
     }
     .uploader input[type="file"] {
       display: none;
@@ -70,11 +69,12 @@
       gap: 1rem;
     }
     .dimensions {
-      display: flex;
+      display: none;
+      flex-direction: column;
       align-items: center;
       gap: 0.5rem;
     }
-    .format-btn, .download-btn {
+    .format-btn, .download-btn, .convert-dim-btn {
       background: white;
       border: 2px solid black;
       border-radius: 999px;
@@ -134,21 +134,17 @@
     <div class="uploader">
       <label class="upload-label" for="fileInput">
         Click to Upload or Drag and Drop<br>
-        <small>Supports: TXT, PDF, JPG, PNG</small>
+        <small>Supports: TXT, PDF, JPG, PNG, SVG, WEBP</small>
       </label>
-      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png" onchange="handleFile(event)">
+      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg,.webp" onchange="handleFile(event)">
       <div class="file-name" id="fileName"></div>
       <div class="controls">
-        <div class="dimensions">
-          <label>Width: <input type="number" id="dimWidth" style="width: 70px"></label>
-          <label>Height: <input type="number" id="dimHeight" style="width: 70px"></label>
-          <select id="dimUnit">
-            <option value="px">px</option>
-            <option value="cm">cm</option>
-            <option value="in">in</option>
-          </select>
-        </div>
         <div id="formatButtons" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem;"></div>
+        <div class="dimensions" id="dimensionFields">
+          <label>Width: <input type="number" id="dimWidth" value="800"></label>
+          <label>Height: <input type="number" id="dimHeight" value="600"></label>
+          <button class="convert-dim-btn" onclick="convertImageWithDimensions()">Convert</button>
+        </div>
       </div>
     </div>
     <div class="preview-container" id="previewSection" style="display:none">
@@ -160,132 +156,108 @@
     </div>
   </main>
   <script>
+    let selectedFormat = null;
+
+    const formatMap = {
+      'txt': ['pdf'],
+      'pdf': ['png', 'jpg', 'svg'],
+      'jpg': ['png', 'webp', 'pdf'],
+      'jpeg': ['png', 'webp', 'pdf'],
+      'png': ['jpg', 'webp', 'pdf'],
+      'webp': ['jpg', 'png'],
+      'svg': ['png', 'jpg']
+    };
+
     function getExtension(filename) {
       return filename.split('.').pop().toLowerCase();
     }
-    function unitToPx(value, unit) {
-      const dpi = 96;
-      if (unit === 'px') return value;
-      if (unit === 'cm') return value * (dpi / 2.54);
-      if (unit === 'in') return value * dpi;
-      return value;
-    }
-    function pxToUnit(px, unit) {
-      const dpi = 96;
-      if (unit === 'px') return px;
-      if (unit === 'cm') return px * 2.54 / dpi;
-      if (unit === 'in') return px / dpi;
-      return px;
-    }
-    let originalWidth = 0;
-    let originalHeight = 0;
+
     function handleFile(event) {
       const file = event.target.files[0];
       if (!file) return;
       window.selectedFile = file;
       document.getElementById('fileName').textContent = `Selected: ${file.name}`;
       const ext = getExtension(file.name);
-      if (['jpg', 'jpeg', 'png'].includes(ext)) {
-        const reader = new FileReader();
-        const img = new Image();
-        reader.onload = function (e) {
-          img.onload = function () {
-            originalWidth = img.width;
-            originalHeight = img.height;
-            const unit = 'in';
-            document.getElementById('dimWidth').value = pxToUnit(originalWidth, unit).toFixed(2);
-            document.getElementById('dimHeight').value = pxToUnit(originalHeight, unit).toFixed(2);
-            document.getElementById('dimUnit').value = unit;
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      }
-      const formatMap = {
-        'txt': ['pdf'],
-        'pdf': ['png', 'jpg'],
-        'jpg': ['png', 'pdf'],
-        'jpeg': ['png', 'pdf'],
-        'png': ['jpg', 'pdf']
-      };
       const buttons = document.getElementById('formatButtons');
+      document.getElementById('dimensionFields').style.display = 'none';
       buttons.innerHTML = '';
       (formatMap[ext] || []).forEach(fmt => {
         const btn = document.createElement('button');
         btn.className = 'format-btn';
         btn.textContent = `Convert to .${fmt}`;
-        btn.onclick = () => convertFile(fmt);
+        btn.onclick = () => handleConversionOption(fmt);
         buttons.appendChild(btn);
       });
     }
-    function convertFile(format) {
+
+    function handleConversionOption(format) {
+      selectedFormat = format;
+      if (['jpg', 'jpeg', 'png'].includes(format)) {
+        document.getElementById('dimensionFields').style.display = 'flex';
+      } else {
+        convertFile(format);
+      }
+    }
+
+    function convertImageWithDimensions() {
+      const width = parseInt(document.getElementById('dimWidth').value);
+      const height = parseInt(document.getElementById('dimHeight').value);
+      convertFile(selectedFormat, width, height);
+    }
+
+    function convertFile(format, customWidth = null, customHeight = null) {
       const file = window.selectedFile;
       if (!file) return alert('Please select a file first.');
       const ext = getExtension(file.name);
-      const reader = new FileReader();
-      const unit = document.getElementById('dimUnit').value;
-      const width = unitToPx(Number(document.getElementById('dimWidth').value), unit);
-      const height = unitToPx(Number(document.getElementById('dimHeight').value), unit);
       const fileName = file.name.split('.')[0];
+      const reader = new FileReader();
+
       if (ext === 'txt' && format === 'pdf') {
-        reader.onload = function (e) {
+        reader.onload = e => {
           const { jsPDF } = window.jspdf;
-          const doc = new jsPDF({ unit: 'px', format: [width, height] });
+          const doc = new jsPDF();
           doc.text(e.target.result, 10, 20);
           const blob = doc.output('blob');
           window.convertedBlob = blob;
           window.convertedName = `${fileName}.pdf`;
-          showPreview(blob, window.convertedName);
+          showPreview(blob, `${fileName}.pdf`);
         };
         reader.readAsText(file);
-      } else if (['jpg', 'jpeg', 'png'].includes(ext) && format === 'pdf') {
-        reader.onload = function (e) {
-          const img = new Image();
-          img.onload = function () {
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF({ unit: 'px', format: [width, height] });
-            pdf.addImage(img, 'JPEG', 0, 0, width, height);
-            const blob = pdf.output('blob');
-            window.convertedBlob = blob;
-            window.convertedName = `${fileName}.pdf`;
-            showPreview(blob, window.convertedName);
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      } else if (['jpg', 'jpeg', 'png'].includes(ext) && ['jpg', 'jpeg', 'png'].includes(format)) {
-        reader.onload = function (e) {
+
+      } else if (['jpg', 'jpeg', 'png', 'webp', 'svg'].includes(ext)) {
+        reader.onload = e => {
           const img = new Image();
           img.onload = function () {
             const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
+            canvas.width = customWidth || img.width;
+            canvas.height = customHeight || img.height;
             const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             canvas.toBlob(blob => {
               window.convertedBlob = blob;
               window.convertedName = `${fileName}.${format}`;
-              showPreview(blob, window.convertedName);
+              showPreview(blob, `${fileName}.${format}`);
             }, `image/${format}`);
           };
           img.src = e.target.result;
         };
         reader.readAsDataURL(file);
+
       } else if (ext === 'pdf' && ['png', 'jpg'].includes(format)) {
         reader.onload = function (e) {
           const typedarray = new Uint8Array(e.target.result);
           pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
             pdf.getPage(1).then(page => {
-              const viewport = page.getViewport({ scale: 1.5 });
+              const viewport = page.getViewport({ scale: 2 });
               const canvas = document.createElement('canvas');
+              const context = canvas.getContext('2d');
               canvas.width = viewport.width;
               canvas.height = viewport.height;
-              const context = canvas.getContext('2d');
               page.render({ canvasContext: context, viewport }).promise.then(() => {
                 canvas.toBlob(blob => {
                   window.convertedBlob = blob;
                   window.convertedName = `${fileName}_page1.${format}`;
-                  showPreview(blob, window.convertedName);
+                  showPreview(blob, `${fileName}_page1.${format}`);
                 }, `image/${format}`);
               });
             });
@@ -296,17 +268,20 @@
         alert('Unsupported conversion.');
       }
     }
+
     function showPreview(blob, filename) {
       const previewBox = document.getElementById('previewBox');
       const reader = new FileReader();
       reader.onload = function (e) {
         const ext = getExtension(filename);
-        if (['jpg', 'jpeg', 'png'].includes(ext)) {
+        if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
           previewBox.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
         } else if (ext === 'pdf') {
-          previewBox.innerHTML = `<iframe src="${e.target.result}" style="width:100%; height:100%; border:none;"></iframe>`;
+          previewBox.innerHTML = `<iframe src="${e.target.result}" width="100%" height="100%" style="border:none;"></iframe>`;
         } else if (ext === 'txt') {
-          previewBox.innerHTML = `<pre style="white-space: pre-wrap; word-wrap: break-word;">${atob(e.target.result.split(',')[1])}</pre>`;
+          previewBox.innerHTML = `<pre>${e.target.result}</pre>`;
+        } else if (ext === 'svg') {
+          previewBox.innerHTML = e.target.result;
         } else {
           previewBox.textContent = 'Preview not available';
         }
@@ -315,6 +290,7 @@
       document.getElementById('previewFilename').textContent = filename;
       document.getElementById('previewSection').style.display = 'flex';
     }
+
     function downloadFile() {
       if (!window.convertedBlob || !window.convertedName) return alert('No file ready to download.');
       const link = document.createElement('a');
