@@ -241,16 +241,23 @@
 
       } else if (ext === 'docx' && format === 'pdf') {
         reader.onload = function (e) {
-          mammoth.convertToHtml({ arrayBuffer: e.target.result })
-            .then(result => {
-              const { jsPDF } = window.jspdf;
-              const doc = new jsPDF();
-              const text = result.value.replace(/<[^>]+>/g, '');
-              doc.text(text, 10, 20);
+          mammoth.convertToHtml({ arrayBuffer: e.target.result }).then(result => {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+          const html = document.createElement('div');
+          html.innerHTML = result.value;
+
+          doc.html(html, {
+            callback: function (doc) {
               const blob = doc.output('blob');
               window.convertedBlob = blob;
               window.convertedName = `${fileName}.pdf`;
               showPreview(blob, `${fileName}.pdf`);
+            },
+            x: 10,
+            y: 10
+          });
+        }).catch(err => alert("Conversion error: " + err));
             })
             .catch(err => alert("Conversion error: " + err));
         };
