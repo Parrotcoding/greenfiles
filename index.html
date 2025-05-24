@@ -224,7 +224,27 @@
           pdfjsLib.getDocument({ data: typedarray }).promise.then(async pdf => {
             const previewSection = document.getElementById('previewSection');
             const previewBox = document.getElementById('previewBox');
+            const previewFilename = document.getElementById('previewFilename');
+            const downloadBtn = document.querySelector('.download-btn');
+            const instructionBox = document.querySelector('.preview-instruction');
             previewBox.innerHTML = '';
+            if (pdf.numPages > 1) {
+              previewFilename.textContent = `${fileName}`;
+              downloadBtn.style.display = 'none';
+              if (!instructionBox) {
+                const newInstruction = document.createElement('div');
+                newInstruction.className = 'preview-instruction';
+                newInstruction.textContent = 'Click each page\'s download button to save it.';
+                newInstruction.style.fontWeight = 'bold';
+                newInstruction.style.marginTop = '1rem';
+                document.querySelector('.preview-actions').appendChild(newInstruction);
+              }
+            } else {
+              previewFilename.textContent = `${fileName}.pdf`;
+              downloadBtn.style.display = 'block';
+              const existing = document.querySelector('.preview-instruction');
+              if (existing) existing.remove();
+            }
 
             for (let i = 1; i <= pdf.numPages; i++) {
               const page = await pdf.getPage(i);
