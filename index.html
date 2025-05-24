@@ -175,6 +175,17 @@
     <div id="historyPanel"><h2>Conversion History</h2><div id="historyList"></div></div>
   </main>
   <script>
+function switchLanguage(lang) {
+  const links = {
+    fr: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=fr&_x_tr_hl=en&_x_tr_pto=wapp',
+    es: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=es&_x_tr_hl=en&_x_tr_pto=wapp',
+    ko: 'https://greenfiles-vercel-app.translate.goog/?_x_tr_sl=en&_x_tr_tl=ko&_x_tr_hl=en&_x_tr_pto=wapp'
+  };
+  if (links[lang]) {
+    window.location.href = links[lang];
+  }
+}
+
 window.switchLanguage = switchLanguage;
 window.handleFile = handleFile;
 
