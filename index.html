@@ -4,7 +4,38 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>File Converter</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js">      } else if (ext === 'pdf' && ['png', 'jpg', 'webp'].includes(format)) {
+        const zip = new JSZip();
+        reader.onload = function (e) {
+          const typedarray = new Uint8Array(e.target.result);
+          pdfjsLib.getDocument({ data: typedarray }).promise.then(async pdf => {
+            const previewBox = document.getElementById('previewBox');
+            previewBox.innerHTML = '';
+            const folder = zip.folder(`${fileName}_pages`);
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const viewport = page.getViewport({ scale: 2 });
+              const canvas = document.createElement('canvas');
+              const context = canvas.getContext('2d');
+              canvas.width = viewport.width;
+              canvas.height = viewport.height;
+              await page.render({ canvasContext: context, viewport }).promise;
+              const dataUrl = canvas.toDataURL(`image/${format}`);
+              const img = document.createElement('img');
+              img.src = dataUrl;
+              img.style.marginBottom = '1rem';
+              previewBox.appendChild(img);
+              const base64Data = dataUrl.split(',')[1];
+              folder.file(`${fileName}_page${i}.${format}`, base64Data, { base64: true });
+            }
+            zip.generateAsync({ type: "blob" }).then(function (content) {
+              window.convertedBlob = content;
+              window.convertedName = `${fileName}_pages.zip`;
+            });
+            document.getElementById('previewSection').style.display = 'flex';
+          });
+        };
+        reader.readAsArrayBuffer(file);
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -116,6 +147,7 @@
       box-shadow: 2px 2px 0 black;
     }
   </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 </head>
 <body>
   <header>
@@ -132,7 +164,7 @@
         Click to Upload or Drag and Drop<br>
         <small>Supports: TXT, PDF, JPG, PNG, SVG, WEBP, BMP, DOCX</small>
       </label>
-      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg,.webp,.bmp,.docx" onchange="handleFile(event)">
+      <input type="file" id="fileInput" accept=".txt,.pdf,.jpg,.jpeg,.png,.svg,.webp,.bmp,.docx" onchange="handleFile(event)" />
       <div class="file-name" id="fileName"></div>
       <div class="controls">
         <div id="formatButtons" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem;"></div>
@@ -147,6 +179,22 @@
     </div>
   </main>
   <script>
+    function handleFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      window.selectedFile = file;
+      document.getElementById('fileName').textContent = `Selected: ${file.name}`;
+      const ext = file.name.split('.').pop().toLowerCase();
+      const formatButtons = document.getElementById('formatButtons');
+      formatButtons.innerHTML = '';
+      (formatMap[ext] || []).forEach(fmt => {
+        const btn = document.createElement('button');
+        btn.className = 'format-btn';
+        btn.textContent = `Convert to .${fmt}`;
+        btn.onclick = () => convertFile(fmt);
+        formatButtons.appendChild(btn);
+      });
+    }
     const formatMap = {
       'txt': ['pdf'],
       'pdf': ['png', 'jpg', 'svg', 'webp'],
