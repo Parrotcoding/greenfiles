@@ -164,10 +164,21 @@
     }
 
     function handleFile(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      window.selectedFile = file;
-      document.getElementById('fileName').textContent = `Selected: ${file.name}`;
+  const file = event.target.files[0];
+  if (!file) return;
+  window.selectedFile = file;
+  document.getElementById('fileName').textContent = `Selected: ${file.name}`;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const formatButtons = document.getElementById('formatButtons');
+  formatButtons.innerHTML = '';
+  (formatMap[ext] || []).forEach(fmt => {
+    const btn = document.createElement('button');
+    btn.className = 'format-btn';
+    btn.textContent = `Convert to .${fmt}`;
+    btn.onclick = () => convertFile(fmt);
+    formatButtons.appendChild(btn);
+  });
+}`;
       const ext = getExtension(file.name);
       const buttons = document.getElementById('formatButtons');
       buttons.innerHTML = '';
@@ -219,183 +230,119 @@
         reader.readAsDataURL(file);
 
       } else if (ext === 'pdf' && ['png', 'jpg', 'webp'].includes(format)) {
-        reader.onload = function (e) {
-          const typedarray = new Uint8Array(e.target.result);
-          pdfjsLib.getDocument({ data: typedarray }).promise.then(async pdf => {
-            const previewSection = document.getElementById('previewSection');
-            const previewBox = document.getElementById('previewBox');
-            const previewFilename = document.getElementById('previewFilename');
-            const downloadBtn = document.querySelector('.download-btn');
-            const instructionBox = document.querySelector('.preview-instruction');
-            previewBox.innerHTML = '';
-            if (pdf.numPages > 1) {
-              previewFilename.textContent = `${fileName}`;
-              downloadBtn.style.display = 'none';
-              if (!instructionBox) {
-                const newInstruction = document.createElement('div');
-                newInstruction.className = 'preview-instruction';
-                newInstruction.textContent = 'Click each page\'s download button to save it.';
-                newInstruction.style.fontWeight = 'bold';
-                newInstruction.style.marginTop = '1rem';
-                document.querySelector('.preview-actions').appendChild(newInstruction);
-              }
-              for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const viewport = page.getViewport({ scale: 2 });
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                await page.render({ canvasContext: context, viewport }).promise;
+  reader.onload = async function (e) {
+    const typedarray = new Uint8Array(e.target.result);
+    const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+    const previewBox = document.getElementById('previewBox');
+    const previewFilename = document.getElementById('previewFilename');
+    const downloadBtn = document.querySelector('.download-btn');
+    const instruction = document.querySelector('.preview-instruction');
+    previewBox.innerHTML = '';
 
-                const dataUrl = canvas.toDataURL(`image/${format}`);
+    if (pdf.numPages > 1) {
+      previewFilename.textContent = file.name.replace(/\.[^/.]+$/, '');
+      downloadBtn.style.display = 'none';
+      if (!instruction) {
+        const note = document.createElement('div');
+        note.className = 'preview-instruction';
+        note.textContent = 'Click each page\'s download button to save it.';
+        note.style.fontWeight = 'bold';
+        note.style.marginTop = '1rem';
+        document.querySelector('.preview-actions').appendChild(note);
+      }
 
-                const wrapper = document.createElement('div');
-                wrapper.style.display = 'flex';
-                wrapper.style.alignItems = 'center';
-                wrapper.style.justifyContent = 'center';
-                wrapper.style.gap = '2rem';
-                wrapper.style.marginBottom = '2rem';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const context = canvas.getContext('2d');
+        await page.render({ canvasContext: context, viewport }).promise;
 
-                const card = document.createElement('div');
-                card.style.border = '2px solid black';
-                card.style.padding = '1rem';
-                card.style.background = 'white';
-                card.style.boxShadow = '3px 3px 0 black';
-                card.style.borderRadius = '1rem';
-                card.style.width = '300px';
-                card.style.height = '400px';
-                card.style.display = 'flex';
-                card.style.justifyContent = 'center';
-                card.style.alignItems = 'center';
+        const dataUrl = canvas.toDataURL(`image/${format}`);
 
-                const img = document.createElement('img');
-                img.src = dataUrl;
-                img.style.maxWidth = '100%';
-                img.style.maxHeight = '100%';
-                card.appendChild(img);
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.justifyContent = 'center';
+        wrapper.style.gap = '2rem';
+        wrapper.style.marginBottom = '2rem';
 
-                const controls = document.createElement('div');
-                controls.style.display = 'flex';
-                controls.style.flexDirection = 'column';
-                controls.style.alignItems = 'flex-start';
-                controls.style.justifyContent = 'center';
-                controls.style.gap = '1rem';
+        const card = document.createElement('div');
+        card.style.border = '2px solid black';
+        card.style.padding = '1rem';
+        card.style.background = 'white';
+        card.style.boxShadow = '3px 3px 0 black';
+        card.style.borderRadius = '1rem';
+        card.style.width = '300px';
+        card.style.height = '400px';
+        card.style.display = 'flex';
+        card.style.justifyContent = 'center';
+        card.style.alignItems = 'center';
 
-                const filenameBox = document.createElement('div');
-                filenameBox.className = 'preview-filename';
-                filenameBox.textContent = `${fileName}_page${i}.${format}`;
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '100%';
+        card.appendChild(img);
 
-                const pageDownloadBtn = document.createElement('button');
-                pageDownloadBtn.textContent = `Download`;
-                pageDownloadBtn.className = 'format-btn';
-                pageDownloadBtn.onclick = () => {
-                  const link = document.createElement('a');
-                  link.href = dataUrl;
-                  link.download = `${fileName}_page${i}.${format}`;
-                  link.click();
-                };
+        const controls = document.createElement('div');
+        controls.style.display = 'flex';
+        controls.style.flexDirection = 'column';
+        controls.style.alignItems = 'flex-start';
+        controls.style.justifyContent = 'center';
+        controls.style.gap = '1rem';
 
-                controls.appendChild(filenameBox);
-                controls.appendChild(pageDownloadBtn);
-                wrapper.appendChild(card);
-                wrapper.appendChild(controls);
-                previewBox.appendChild(wrapper);
-              }
-            } else {
-              const page = await pdf.getPage(1);
-              const viewport = page.getViewport({ scale: 2 });
-              const canvas = document.createElement('canvas');
-              const context = canvas.getContext('2d');
-              canvas.width = viewport.width;
-              canvas.height = viewport.height;
-              await page.render({ canvasContext: context, viewport }).promise;
+        const filenameBox = document.createElement('div');
+        filenameBox.className = 'preview-filename';
+        filenameBox.textContent = `${file.name.replace(/\.[^/.]+$/, '')}_page${i}.${format}`;
 
-              const dataUrl = canvas.toDataURL(`image/${format}`);
-
-              const img = document.createElement('img');
-              img.src = dataUrl;
-              img.style.maxWidth = '100%';
-              img.style.marginBottom = '0.5rem';
-              previewBox.appendChild(img);
-
-              previewFilename.textContent = `${fileName}.${format}`;
-              downloadBtn.style.display = 'block';
-              window.convertedBlob = await new Promise(resolve => canvas.toBlob(resolve, `image/${format}`));
-              window.convertedName = `${fileName}.${format}`;
-              const existing = document.querySelector('.preview-instruction');
-              if (existing) existing.remove();
-            }
-              previewFilename.textContent = `${fileName}.pdf`;
-              downloadBtn.style.display = 'block';
-              const existing = document.querySelector('.preview-instruction');
-              if (existing) existing.remove();
-            }
-
-            for (let i = 1; i <= pdf.numPages; i++) {
-              const page = await pdf.getPage(i);
-              const viewport = page.getViewport({ scale: 2 });
-              const canvas = document.createElement('canvas');
-              const context = canvas.getContext('2d');
-              canvas.width = viewport.width;
-              canvas.height = viewport.height;
-              await page.render({ canvasContext: context, viewport }).promise;
-
-              const dataUrl = canvas.toDataURL(`image/${format}`);
-
-              const wrapper = document.createElement('div');
-              wrapper.style.display = 'flex';
-              wrapper.style.alignItems = 'center';
-              wrapper.style.justifyContent = 'center';
-              wrapper.style.gap = '2rem';
-              wrapper.style.marginBottom = '2rem';
-
-              const card = document.createElement('div');
-              card.style.border = '2px solid black';
-              card.style.padding = '1rem';
-              card.style.background = 'white';
-              card.style.boxShadow = '3px 3px 0 black';
-              card.style.borderRadius = '1rem';
-              card.style.width = '300px';
-              card.style.height = '400px';
-              card.style.display = 'flex';
-              card.style.justifyContent = 'center';
-              card.style.alignItems = 'center';
-              card.textContent = `Page ${i}`;
-
-              const controls = document.createElement('div');
-              controls.style.display = 'flex';
-              controls.style.flexDirection = 'column';
-              controls.style.alignItems = 'flex-start';
-              controls.style.justifyContent = 'center';
-              controls.style.gap = '1rem';
-
-              const filenameBox = document.createElement('div');
-              filenameBox.className = 'preview-filename';
-              filenameBox.textContent = `${fileName}_page${i}.${format}`;
-
-              const downloadBtn = document.createElement('button');
-              downloadBtn.textContent = `Download`;
-              downloadBtn.className = 'format-btn';
-              downloadBtn.onclick = () => {
-                const link = document.createElement('a');
-                link.href = dataUrl;
-                link.download = `${fileName}_page${i}.${format}`;
-                link.click();
-              };
-
-              controls.appendChild(filenameBox);
-              controls.appendChild(downloadBtn);
-
-              wrapper.appendChild(card);
-              wrapper.appendChild(controls);
-              previewBox.appendChild(wrapper);
-            }
-
-            previewSection.style.display = 'flex';
-          });
+        const pageDownloadBtn = document.createElement('button');
+        pageDownloadBtn.textContent = `Download`;
+        pageDownloadBtn.className = 'format-btn';
+        pageDownloadBtn.onclick = () => {
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = `${file.name.replace(/\.[^/.]+$/, '')}_page${i}.${format}`;
+          link.click();
         };
-        reader.readAsArrayBuffer(file);
+
+        controls.appendChild(filenameBox);
+        controls.appendChild(pageDownloadBtn);
+        wrapper.appendChild(card);
+        wrapper.appendChild(controls);
+        previewBox.appendChild(wrapper);
+      }
+    } else {
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const context = canvas.getContext('2d');
+      await page.render({ canvasContext: context, viewport }).promise;
+
+      const dataUrl = canvas.toDataURL(`image/${format}`);
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.style.maxWidth = '100%';
+      img.style.marginBottom = '0.5rem';
+      previewBox.appendChild(img);
+
+      previewFilename.textContent = `${file.name.replace(/\.[^/.]+$/, '')}.${format}`;
+      downloadBtn.style.display = 'block';
+      canvas.toBlob(blob => {
+        window.convertedBlob = blob;
+        window.convertedName = `${file.name.replace(/\.[^/.]+$/, '')}.${format}`;
+      }, `image/${format}`);
+
+      const existing = document.querySelector('.preview-instruction');
+      if (existing) existing.remove();
+    }
+    document.getElementById('previewSection').style.display = 'flex';
+  };
+  reader.readAsArrayBuffer(file);
 
       } else if (ext === 'docx' && format === 'pdf') {
         reader.onload = function (e) {
