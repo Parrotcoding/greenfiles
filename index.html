@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>File Converter</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf.2.5.1/jspdf.umd.min.js"></script>
   <style>
     body {
       margin: 0;
@@ -68,13 +68,7 @@
       align-items: center;
       gap: 1rem;
     }
-    .dimensions {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .format-btn, .download-btn, .convert-dim-btn {
+    .format-btn, .download-btn {
       background: white;
       border: 2px solid black;
       border-radius: 999px;
@@ -140,11 +134,6 @@
       <div class="file-name" id="fileName"></div>
       <div class="controls">
         <div id="formatButtons" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem;"></div>
-        <div class="dimensions" id="dimensionFields">
-          <label>Width: <input type="number" id="dimWidth" value="800"></label>
-          <label>Height: <input type="number" id="dimHeight" value="600"></label>
-          <button class="convert-dim-btn" onclick="convertImageWithDimensions()">Convert</button>
-        </div>
       </div>
     </div>
     <div class="preview-container" id="previewSection" style="display:none">
@@ -156,8 +145,6 @@
     </div>
   </main>
   <script>
-    let selectedFormat = null;
-
     const formatMap = {
       'txt': ['pdf'],
       'pdf': ['png', 'jpg', 'svg'],
@@ -179,33 +166,17 @@
       document.getElementById('fileName').textContent = `Selected: ${file.name}`;
       const ext = getExtension(file.name);
       const buttons = document.getElementById('formatButtons');
-      document.getElementById('dimensionFields').style.display = 'none';
       buttons.innerHTML = '';
       (formatMap[ext] || []).forEach(fmt => {
         const btn = document.createElement('button');
         btn.className = 'format-btn';
         btn.textContent = `Convert to .${fmt}`;
-        btn.onclick = () => handleConversionOption(fmt);
+        btn.onclick = () => convertFile(fmt);
         buttons.appendChild(btn);
       });
     }
 
-    function handleConversionOption(format) {
-      selectedFormat = format;
-      if (['jpg', 'jpeg', 'png'].includes(format)) {
-        document.getElementById('dimensionFields').style.display = 'flex';
-      } else {
-        convertFile(format);
-      }
-    }
-
-    function convertImageWithDimensions() {
-      const width = parseInt(document.getElementById('dimWidth').value);
-      const height = parseInt(document.getElementById('dimHeight').value);
-      convertFile(selectedFormat, width, height);
-    }
-
-    function convertFile(format, customWidth = null, customHeight = null) {
+    function convertFile(format) {
       const file = window.selectedFile;
       if (!file) return alert('Please select a file first.');
       const ext = getExtension(file.name);
@@ -229,10 +200,10 @@
           const img = new Image();
           img.onload = function () {
             const canvas = document.createElement('canvas');
-            canvas.width = customWidth || img.width;
-            canvas.height = customHeight || img.height;
+            canvas.width = img.width;
+            canvas.height = img.height;
             const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
             canvas.toBlob(blob => {
               window.convertedBlob = blob;
               window.convertedName = `${fileName}.${format}`;
