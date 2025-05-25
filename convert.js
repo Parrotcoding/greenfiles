@@ -1,4 +1,3 @@
-// BEGIN: Full convert.js with all features
 function createCustomSelect(wrapper, options, onSelect) {
   wrapper.innerHTML = '';
   const input = document.createElement('input');
@@ -46,6 +45,8 @@ const formatMap = {
 };
 
 let selectedFiles = [];
+let latestBlob = null;
+let latestName = '';
 
 document.addEventListener('DOMContentLoaded', () => {
   const fromDiv = document.getElementById('fromFormat');
@@ -113,6 +114,9 @@ document.addEventListener('DOMContentLoaded', () => {
     fileLabel.style.display = 'none';
     previewBox.innerHTML = 'File preview here';
   });
+
+  document.querySelector('.download-btn[onclick="downloadFile()"]').addEventListener('click', downloadFile);
+  document.querySelector('.download-btn[onclick="downloadAllImages()"]').addEventListener('click', downloadAllImages);
 });
 
 function convertFile(file, from, to) {
@@ -196,16 +200,15 @@ function preview(blob, name) {
   const previewBox = document.getElementById('previewBox');
   const container = document.createElement('div');
   container.className = 'preview-card';
-  const label = document.createElement('div');
-  label.className = 'preview-filename';
-  label.textContent = name;
+  document.getElementById('previewFilename').textContent = name;
+  latestBlob = blob;
+  latestName = name;
 
   if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
     const reader = new FileReader();
     reader.onload = e => {
       const img = document.createElement('img');
       img.src = e.target.result;
-      container.appendChild(label);
       container.appendChild(img);
       previewBox.appendChild(container);
     };
@@ -217,7 +220,6 @@ function preview(blob, name) {
     iframe.style.width = '100%';
     iframe.style.height = '800px';
     iframe.style.border = 'none';
-    container.appendChild(label);
     container.appendChild(iframe);
     previewBox.appendChild(container);
   } else if (ext === 'txt') {
@@ -225,7 +227,6 @@ function preview(blob, name) {
     reader.onload = e => {
       const pre = document.createElement('pre');
       pre.textContent = e.target.result;
-      container.appendChild(label);
       container.appendChild(pre);
       previewBox.appendChild(container);
     };
@@ -233,26 +234,23 @@ function preview(blob, name) {
   } else if (ext === 'zip') {
     const zipNotice = document.createElement('p');
     zipNotice.textContent = 'Multiple images available in ZIP download.';
-    const downloadBtn = document.createElement('button');
-    downloadBtn.className = 'download-btn';
-    downloadBtn.textContent = 'Download ZIP';
-    downloadBtn.onclick = () => {
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = name;
-      link.click();
-    };
-    container.appendChild(label);
     container.appendChild(zipNotice);
-    container.appendChild(downloadBtn);
     previewBox.appendChild(container);
   }
 }
 
 function downloadFile() {
-  alert('Direct single file download is auto-triggered on preview. Use ZIP if multiple.');
+  if (!latestBlob || !latestName) return alert('No file to download.');
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(latestBlob);
+  link.download = latestName;
+  link.click();
 }
 
 function downloadAllImages() {
-  alert('For multi-page documents, images are included in the ZIP file.');
+  if (!latestBlob || !latestName.endsWith('.zip')) return alert('No ZIP available to download.');
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(latestBlob);
+  link.download = latestName;
+  link.click();
 }
