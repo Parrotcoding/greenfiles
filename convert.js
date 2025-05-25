@@ -85,10 +85,17 @@ function initApp() {
   const previewBox      = $('#previewBox');
   const previewFilename = $('#previewFilename');
 
+  // helper: show label only when BOTH selects have a value
+  const toggleUploadLabel = () => {
+    const ready = fromDiv.dataset.value && toDiv.dataset.value;
+    fileLabel.style.display = ready ? 'block' : 'none';
+  };
+
   /* 1. Build "from" select */
   createCustomSelect(fromDiv, Object.keys(formatMap), fromSel => {
     toDiv.textContent             = '';
-    fileLabel.style.display       = 'none';
+    fileLabel.style.display = 'none';
+    toggleUploadLabel();
     fileInput.value               = '';
     filePreview.textContent       = '';
     filePreview.style.display     = 'none';
@@ -98,7 +105,7 @@ function initApp() {
     createCustomSelect(toDiv, formatMap[fromSel], toSel => {
       if (fromSel && toSel) {
         fileInput.accept         = '.' + fromSel;
-        fileLabel.style.display  = 'block';
+        toggleUploadLabel();
       }
     });
   });
