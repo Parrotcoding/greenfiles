@@ -124,6 +124,26 @@
       font-size: 1.3rem;
     }
 
+    .gallery {
+      margin-top: 4rem;
+      text-align: center;
+    }
+
+    .gallery h3 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+
+    .gallery img {
+      width: 500px;
+      height: auto;
+      max-width: 90%;
+      border: 4px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 3px 3px 0 var(--border-color);
+      transition: opacity 1s ease-in-out;
+    }
+
     footer {
       text-align: center;
       padding: 1.5rem;
@@ -144,7 +164,7 @@
   <section class="hero">
     <div class="hero-content">
       <h2>Convert Files Instantly – No Upload Required</h2>
-      <p><strong>greenfiles</strong> is a fast, private file converter that works entirely in your browser. <strong>No servers are involved, and your files are never uploaded or stored anywhere online.</strong> Everything runs locally on your device, ensuring total privacy.</p>
+      <p><strong>greenfiles</strong> is a fast, privacy-first file converter that works entirely in your browser. <strong>No servers are involved, and your files are never uploaded or stored anywhere online.</strong> Everything runs locally on your device, ensuring total privacy.</p>
       <div class="cta-buttons">
         <a href="convert.html">Start Converting</a>
         <a href="#features">See Features</a>
@@ -152,7 +172,7 @@
       </div>
     </div>
     <div class="hero-image">
-      <img src="Choose Greenfiles.png" alt="File conversion graphic" />
+      <img src="Choose Greenfiles.png" alt="Choose greenfiles illustration" />
     </div>
   </section>
 
@@ -176,10 +196,34 @@
         <p>Conversion happens instantly using client-side tools — no waiting required.</p>
       </div>
     </div>
+
+    <div class="gallery">
+      <h3>See greenfiles in Action</h3>
+      <img id="gallery-img" src="screenshot1.png" alt="App screenshot" />
+    </div>
   </section>
 
   <footer>
     <p>&copy; 2025 greenfiles. Open Source on <a href="https://github.com/Parrotcoding/greenfiles/">GitHub</a>.</p>
   </footer>
+
+  <script>
+    const images = [
+      "screenshot1.png",
+      "screenshot2.png",
+      "screenshot3.png"
+    ];
+    let index = 0;
+    const imgEl = document.getElementById("gallery-img");
+
+    setInterval(() => {
+      index = (index + 1) % images.length;
+      imgEl.style.opacity = 0;
+      setTimeout(() => {
+        imgEl.src = images[index];
+        imgEl.style.opacity = 1;
+      }, 400);
+    }, 3000);
+  </script>
 </body>
 </html>
