@@ -1,3 +1,8 @@
+// convert.js (Full file, nothing omitted)
+
+let selectedFiles = [];
+let convertedFiles = [];
+
 function createCustomSelect(wrapper, options, onSelect) {
   wrapper.innerHTML = '';
   const input = document.createElement('input');
@@ -44,11 +49,7 @@ const formatMap = {
   svg: ['png', 'jpg', 'webp']
 };
 
-let selectedFiles = [];
-let latestBlob = null;
-let latestName = '';
-
-document.addEventListener('DOMContentLoaded', () => {
+function setup() {
   const fromDiv = document.getElementById('fromFormat');
   const toDiv = document.getElementById('toFormat');
   const fileInput = document.getElementById('fileInput');
@@ -59,6 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const previewSection = document.getElementById('previewSection');
   const previewBox = document.getElementById('previewBox');
   const previewFilename = document.getElementById('previewFilename');
+  const downloadBtn = document.querySelector('.download-btn[onclick="downloadFile()"]');
+  const zipBtn = document.querySelector('.download-btn[onclick="downloadAllImages()"]');
 
   createCustomSelect(fromDiv, Object.keys(formatMap), fromSelected => {
     toDiv.innerHTML = '';
@@ -97,7 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
   convertBtn.addEventListener('click', () => {
     const from = fromDiv.dataset.value;
     const to = toDiv.dataset.value;
-    if (!selectedFiles.length || !from || !to) return alert('Missing info');
+    if (!selectedFiles.length || !from || !to) return;
+    convertedFiles = [];
     previewBox.innerHTML = '';
     previewFilename.textContent = '';
     previewSection.style.display = 'flex';
@@ -115,30 +119,35 @@ document.addEventListener('DOMContentLoaded', () => {
     previewBox.innerHTML = 'File preview here';
   });
 
-  document.querySelector('.download-btn[onclick="downloadFile()"]').addEventListener('click', downloadFile);
-  document.querySelector('.download-btn[onclick="downloadAllImages()"]').addEventListener('click', downloadAllImages);
-});
+  downloadBtn.addEventListener('click', downloadFile);
+  zipBtn.addEventListener('click', downloadAllImages);
+}
+
+document.addEventListener('DOMContentLoaded', setup);
 
 function convertFile(file, from, to) {
   const fileName = file.name.replace(/\.[^/.]+$/, '');
   const reader = new FileReader();
+
+  const handleBlob = (blob, name) => {
+    preview(blob, name);
+    convertedFiles.push({ name, blob });
+    updateDownloadButtons();
+  };
 
   if (from === 'txt' && to === 'pdf') {
     reader.onload = e => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       doc.text(e.target.result, 10, 20);
-      const blob = doc.output('blob');
-      preview(blob, `${fileName}.pdf`);
+      handleBlob(doc.output('blob'), `${fileName}.pdf`);
     };
     reader.readAsText(file);
 
   } else if (from === 'docx' && to === 'txt') {
     reader.onload = e => {
-      mammoth.extractRawText({ arrayBuffer: e.target.result }).then(result => {
-        const blob = new Blob([result.value], { type: 'text/plain' });
-        preview(blob, `${fileName}.txt`);
-      });
+      mammoth.extractRawText({ arrayBuffer: e.target.result })
+        .then(result => handleBlob(new Blob([result.value], { type: 'text/plain' }), `${fileName}.txt`));
     };
     reader.readAsArrayBuffer(file);
 
@@ -152,7 +161,7 @@ function convertFile(file, from, to) {
       previewBox.innerHTML = '';
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 2 });
+        const viewport = page.getViewport({ scale: 1 });
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = viewport.width;
@@ -164,7 +173,7 @@ function convertFile(file, from, to) {
         previewBox.appendChild(img);
         folder.file(`page_${i}.${to}`, dataUrl.split(',')[1], { base64: true });
       }
-      zip.generateAsync({ type: 'blob' }).then(blob => preview(blob, `${fileName}.zip`));
+      zip.generateAsync({ type: 'blob' }).then(blob => handleBlob(blob, `${fileName}.zip`));
     };
     reader.readAsArrayBuffer(file);
 
@@ -181,12 +190,9 @@ function convertFile(file, from, to) {
           const { jsPDF } = window.jspdf;
           const pdf = new jsPDF({ orientation: img.width > img.height ? 'landscape' : 'portrait', unit: 'px', format: [img.width, img.height] });
           pdf.addImage(img, 'JPEG', 0, 0, img.width, img.height);
-          const blob = pdf.output('blob');
-          preview(blob, `${fileName}.pdf`);
+          handleBlob(pdf.output('blob'), `${fileName}.pdf`);
         } else {
-          canvas.toBlob(blob => {
-            preview(blob, `${fileName}.${to}`);
-          }, `image/${to}`);
+          canvas.toBlob(blob => handleBlob(blob, `${fileName}.${to}`), `image/${to}`);
         }
       };
       img.src = e.target.result;
@@ -201,8 +207,6 @@ function preview(blob, name) {
   const container = document.createElement('div');
   container.className = 'preview-card';
   document.getElementById('previewFilename').textContent = name;
-  latestBlob = blob;
-  latestName = name;
 
   if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
     const reader = new FileReader();
@@ -218,7 +222,7 @@ function preview(blob, name) {
     const iframe = document.createElement('iframe');
     iframe.src = url;
     iframe.style.width = '100%';
-    iframe.style.height = '800px';
+    iframe.style.height = '100%';
     iframe.style.border = 'none';
     container.appendChild(iframe);
     previewBox.appendChild(container);
@@ -232,25 +236,45 @@ function preview(blob, name) {
     };
     reader.readAsText(blob);
   } else if (ext === 'zip') {
-    const zipNotice = document.createElement('p');
-    zipNotice.textContent = 'Multiple images available in ZIP download.';
-    container.appendChild(zipNotice);
+    const notice = document.createElement('p');
+    notice.textContent = 'Multiple images available in ZIP download.';
+    container.appendChild(notice);
     previewBox.appendChild(container);
   }
 }
 
+function updateDownloadButtons() {
+  const downloadBtn = document.querySelector('.download-btn[onclick="downloadFile()"]');
+  const zipBtn = document.querySelector('.download-btn[onclick="downloadAllImages()"]');
+  if (convertedFiles.length === 1) {
+    downloadBtn.style.display = 'inline-block';
+    zipBtn.style.display = 'none';
+  } else {
+    downloadBtn.style.display = 'none';
+    zipBtn.style.display = 'inline-block';
+  }
+}
+
 function downloadFile() {
-  if (!latestBlob || !latestName) return alert('No file to download.');
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(latestBlob);
-  link.download = latestName;
-  link.click();
+  if (convertedFiles.length === 1) {
+    const { blob, name } = convertedFiles[0];
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    link.click();
+  }
 }
 
 function downloadAllImages() {
-  if (!latestBlob || !latestName.endsWith('.zip')) return alert('No ZIP available to download.');
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(latestBlob);
-  link.download = latestName;
-  link.click();
+  if (convertedFiles.length > 1) {
+    const zip = new JSZip();
+    const folder = zip.folder('converted_files');
+    convertedFiles.forEach(({ name, blob }) => folder.file(name, blob));
+    zip.generateAsync({ type: 'blob' }).then(blob => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'converted_files.zip';
+      link.click();
+    });
+  }
 }
