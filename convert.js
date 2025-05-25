@@ -1,10 +1,10 @@
 // convert.js — FULL FILE (nothing omitted)
-// ------------------------------------------------------------
+// -----------------------------------------------------------------------------
 //  ▸ Prevents duplicate downloads (only inline onclick handlers fire)
 //  ▸ After any download, shows a share overlay (Web‑Share API + fallback)
-//  ▸ Keeps all original converter functionality (≈400+ lines)
-//  ▸ Single self‑contained script — no HTML edits required
-// ------------------------------------------------------------
+//  ▸ Keeps all original converter functionality (≈430 lines)
+//  ▸ Hides upload label once a file is chosen
+// -----------------------------------------------------------------------------
 
 /*************************
  * GLOBAL UTILITIES & STATE
@@ -123,6 +123,8 @@ function initApp() {
       filePreview.appendChild(div);
     });
     convertBtn.style.display = 'inline-block';
+    // NEW: hide upload label after file(s) selected
+    fileLabel.style.display = 'none';
   });
 
   /* 4. Convert click */
