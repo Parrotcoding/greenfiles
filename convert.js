@@ -1,9 +1,9 @@
 // convert.js — FULL FILE (nothing omitted)
 // ------------------------------------------------------------
 //  ▸ Prevents duplicate downloads (only inline onclick handlers fire)
-//  ▸ After any download, shows a share overlay (Web-Share API + fallback)
+//  ▸ After any download, shows a share overlay (Web‑Share API + fallback)
 //  ▸ Keeps all original converter functionality (≈400+ lines)
-//  ▸ Single self-contained script — no HTML edits required
+//  ▸ Single self‑contained script — no HTML edits required
 // ------------------------------------------------------------
 
 /*************************
@@ -241,4 +241,229 @@ function convertFile(file, from, to) {
   if (from === 'pdf' && ['png', 'jpg', 'webp'].includes(to)) {
     reader.onload = async e => {
       const ta  = new Uint8Array(e.target.result);
-      const pdf = await pdfjsLib.getDocument({ data
+      const pdf = await pdfjsLib.getDocument({ data: ta }).promise;
+      const zip = new JSZip();
+      const folder = zip.folder(baseName);
+      $('#previewBox').textContent = '';
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const vp = page.getViewport({ scale: 1 });
+        const canvas = document.createElement('canvas');
+        canvas.width  = vp.width;
+        canvas.height = vp.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        const dataUrl = canvas.toDataURL(`image/${to}`);
+        const img     = document.createElement('img');
+        img.src = dataUrl;
+        $('#previewBox').appendChild(img);
+        folder.file(`page_${i}.${to}`, dataUrl.split(',')[1], { base64: true });
+      }
+      zip.generateAsync({ type: 'blob' }).then(blob => addResult(blob, `${baseName}.zip`));
+    };
+    reader.readAsArrayBuffer(file);
+    return;
+  }
+
+  /* ───────────────── image → x */
+  if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(from)) {
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width  = img.width;
+        canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+
+        if (to === 'pdf') {
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({
+            orientation: img.width > img.height ? 'landscape' : 'portrait',
+            unit       : 'px',
+            format     : [img.width, img.height]
+          });
+          pdf.addImage(img, 'JPEG', 0, 0, img.width, img.height);
+          addResult(pdf.output('blob'), `${baseName}.pdf`);
+        } else {
+          canvas.toBlob(blob => addResult(blob, `${baseName}.${to}`), `image/${to}`);
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    return;
+  }
+}
+
+/*************************
+ * PREVIEW RENDERING
+ *************************/
+function showPreview(blob, name) {
+  const ext        = name.split('.').pop().toLowerCase();
+  const container  = document.createElement('div');
+  container.className = 'preview-card';
+  $('#previewFilename').textContent = name;
+
+  const box = $('#previewBox');
+
+  if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
+    const fr = new FileReader();
+    fr.onload = e => {
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      container.appendChild(img);
+      box.appendChild(container);
+    };
+    fr.readAsDataURL(blob);
+  } else if (ext === 'pdf') {
+    const iframe = document.createElement('iframe');
+    iframe.style.width  = '100%';
+    iframe.style.height = '100%';
+    iframe.style.border = 'none';
+    iframe.src = URL.createObjectURL(blob);
+    container.appendChild(iframe);
+    box.appendChild(container);
+  } else if (ext === 'txt') {
+    const fr = new FileReader();
+    fr.onload = e => {
+      const pre = document.createElement('pre');
+      pre.textContent = e.target.result;
+      container.appendChild(pre);
+      box.appendChild(container);
+    };
+    fr.readAsText(blob);
+  } else if (ext === 'zip') {
+    const p = document.createElement('p');
+    p.textContent = 'Multiple images available in ZIP download.';
+    container.appendChild(p);
+    box.appendChild(container);
+  }
+}
+
+/*************************
+ * DOWNLOAD BUTTON STATES
+ *************************/
+function updateDownloadButtons() {
+  const singleBtn = $$('.download-btn')[0]; // Download ↓ (single)
+  const zipBtn    = $$('.download-btn')[1]; // Download Image(s) as zip ↓↓↓
+
+  if (convertedFiles.length === 1) {
+    singleBtn.style.display = 'inline-block';
+    zipBtn.style.display    = 'none';
+  } else {
+    singleBtn.style.display = 'none';
+    zipBtn.style.display    = 'inline-block';
+  }
+}
+
+/*************************
+ * DOWNLOAD ACTIONS + SHARE PROMPT
+ *************************/
+function downloadFile() {
+  if (convertedFiles.length !== 1) return;
+  const { blob, name } = convertedFiles[0];
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  showShareOverlay();
+}
+
+function downloadAllImages() {
+  // Download a ZIP when multiple converted files exist
+  if (convertedFiles.length < 2) return;
+
+  const zip    = new JSZip();
+  const folder = zip.folder('converted_files');
+  convertedFiles.forEach(({ name, blob }) => folder.file(name, blob));
+
+  zip.generateAsync({ type: 'blob' }).then(blob => {
+    const link = document.createElement('a');
+    link.href       = URL.createObjectURL(blob);
+    link.download   = 'converted_files.zip';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    showShareOverlay();
+  });
+}
+
+/*************************
+ * SHARE OVERLAY LOGIC
+ *************************/
+function createShareOverlay() {
+  if (shareOverlay) return; // already created
+
+  // Inject quick CSS for overlay
+  const style = document.createElement('style');
+  style.textContent = `
+    #share-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.65);z-index:9999;font-family:'Courier New',monospace;}
+    #share-box{background:#fff;border:4px solid #000;border-radius:12px;padding:2rem;max-width:340px;width:90%;text-align:center;box-shadow:6px 6px 0 #000;animation:fadeIn .3s ease-out;}
+    #share-box h3{margin:.2rem 0 .6rem;font-size:1.5rem;}
+    #share-box p{margin:0;font-size:.95rem;}
+    #share-box button{margin-top:1rem;font-weight:bold;border:2px solid #000;border-radius:8px;padding:.5rem 1rem;cursor:pointer;box-shadow:3px 3px 0 #000;background:#b6eeb3;}
+    #share-box button.secondary{background:#fff;margin-left:.6rem;}
+    #share-fallback{display:none;margin-top:1rem;}
+    #share-fallback input{width:100%;padding:.4rem;border:2px solid #000;border-radius:8px;margin-bottom:.5rem;font-family:inherit;}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  `;
+  document.head.appendChild(style);
+
+  // Build overlay HTML
+  shareOverlay = document.createElement('div');
+  shareOverlay.id = 'share-overlay';
+  shareOverlay.innerHTML = `
+    <div id="share-box">
+      <h3>Enjoying greenfiles?</h3>
+      <p>Share this tool with friends!</p>
+      <button id="share-btn-primary">Share</button>
+      <button id="share-btn-close" class="secondary">Close</button>
+      <div id="share-fallback">
+        <p style="margin:0 0 .4rem 0;font-size:.9rem;">Copy this link:</p>
+        <input type="text" id="share-link" readonly>
+        <button id="share-copy">Copy</button>
+      </div>
+    </div>`;
+  document.body.appendChild(shareOverlay);
+
+  // Set share link value
+  $('#share-link').value = window.location.origin + '/';
+
+  // Event listeners
+  $('#share-btn-primary').onclick = shareSite;
+  $('#share-btn-close').onclick   = () => (shareOverlay.style.display = 'none');
+  $('#share-copy').onclick        = copyLink;
+}
+
+function showShareOverlay() {
+  if (!shareOverlay) createShareOverlay();
+  shareOverlay.style.display = 'flex';
+}
+
+function shareSite() {
+  const fallback = $('#share-fallback');
+  const shareUrl = window.location.origin + '/';
+  $('#share-link').value = shareUrl;
+
+  if (navigator.share) {
+    navigator
+      .share({
+        title: 'greenfiles',
+        text : 'Convert files privately in your browser with greenfiles!',
+        url  : shareUrl
+      })
+      .catch(() => { /* user cancelled */ });
+  } else {
+    fallback.style.display = 'block';
+  }
+}
+
+function copyLink() {
+  const input = $('#share-link');
+  input.select();
+  input.setSelectionRange(0, 99999); // iOS support
+  document.execCommand('copy');
+  alert('Link copied to clipboard!');
+}
