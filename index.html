@@ -50,7 +50,6 @@
     flex-direction: column;
     align-items: center;
     margin-top: 2rem;
-    position: relative;
   }
 
   .uploader {
@@ -60,38 +59,33 @@
     width: 90%;
     max-width: 600px;
     padding: 2rem;
-    padding-bottom: 2rem; /* allow room for hanging label */
     text-align: center;
     border-radius: 1rem;
-    position: relative;
   }
 
-.uploader {
-  padding: 2rem;
-  padding-bottom: 2rem; /* don't reserve space for a hanging label anymore */
-}
-
-.upload-label {
-  position: relative; /* NO absolute positioning */
-  background: var(--accent-color);
-  border: 2px dashed var(--border-color);
-  border-radius: 16px;
-  padding: 1.5rem;
-  width: 100%;
-  max-width: 500px;
-  cursor: pointer;
-  font-weight: bold;
-  text-align: center;
-  box-shadow: 3px 3px 0 var(--border-color);
-  margin-top: 1.5rem; /* adds spacing below the dropdowns */
-}
+  .upload-label {
+    position: relative;
+    display: none;
+    background: var(--accent-color);
+    border: 2px dashed var(--border-color);
+    border-radius: 16px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 500px;
+    cursor: pointer;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 3px 3px 0 var(--border-color);
+    margin-top: 1.5rem;
+    z-index: 1;
+  }
 
   .file-preview {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 1rem;
-    margin-top: 4rem;
+    margin-top: 1rem;
   }
 
   .file-preview img {
@@ -212,12 +206,6 @@
 <body>
   <header>
     <h1>Greenfiles</h1>
-    <select onchange="switchLanguage(this.value)">
-      <option value="">Select Language</option>
-      <option value="fr">Français</option>
-      <option value="es">Español</option>
-      <option value="ko">한국어</option>
-    </select>
   </header>
 
   <main id="setupSection">
@@ -252,65 +240,11 @@
     <p>This tool is generally safe for handling personal or sensitive documents.</p>
     <a href="https://github.com/Parrotcoding/greenfiles">Github</a>
   </footer>
-</body>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
 
 <script>
-  const translations = {
-    fr: {
-      convertFrom: 'Convertir de :',
-      convertTo: 'Convertir en :',
-      upload: 'Cliquez pour téléverser<br><small>Un seul fichier</small>',
-      convert: 'Convertir',
-      preview: 'Aperçu du fichier ici',
-      download: 'Télécharger',
-      downloadZip: 'Télécharger toutes les images',
-      footer1: 'Toutes les conversions se font <strong>localement</strong> dans votre navigateur.',
-      footer2: 'Aucun fichier n’est téléversé ni stocké sur un serveur.'
-    },
-    es: {
-      convertFrom: 'Convertir desde:',
-      convertTo: 'Convertir a:',
-      upload: 'Haz clic para subir<br><small>Solo un archivo</small>',
-      convert: 'Convertir',
-      preview: 'Vista previa del archivo aquí',
-      download: 'Descargar',
-      downloadZip: 'Descargar todas las imágenes',
-      footer1: 'Todas las conversiones se realizan <strong>localmente</strong> en tu navegador.',
-      footer2: 'No se suben ni almacenan archivos en ningún servidor.'
-    },
-    ko: {
-      convertFrom: '변환할 형식:',
-      convertTo: '변환 대상:',
-      upload: '업로드하려면 클릭<br><small>하나의 파일만</small>',
-      convert: '변환하기',
-      preview: '파일 미리보기',
-      download: '다운로드',
-      downloadZip: '모든 이미지 다운로드',
-      footer1: '모든 파일 변환은 <strong>브라우저 내</strong>에서 이루어집니다.',
-      footer2: '파일이 서버에 업로드되거나 저장되지 않습니다.'
-    }
-  };
-
-  function switchLanguage(lang) {
-    const t = translations[lang];
-    if (!t) return;
-    document.querySelector('label[for="fromFormat"]').innerHTML = t.convertFrom;
-    document.querySelector('label[for="toFormat"]').innerHTML = t.convertTo;
-    document.getElementById('fileInputLabel').innerHTML = t.upload;
-    document.getElementById('convertBtn').textContent = t.convert;
-    document.getElementById('previewBox').textContent = t.preview;
-    document.querySelector('#previewSection button:nth-of-type(1)').textContent = t.download;
-    document.querySelector('#previewSection button:nth-of-type(2)').textContent = t.downloadZip;
-    document.querySelector('footer p:nth-of-type(1)').innerHTML = t.footer1;
-    document.querySelector('footer p:nth-of-type(2)').innerHTML = t.footer2;
-  }
-
-  // File format mapping and state
   const formatMap = {
     txt: ['pdf'],
     pdf: ['png', 'jpg', 'webp'],
@@ -367,9 +301,17 @@
   const convertBtn = document.getElementById('convertBtn');
 
   createCustomSelect(fromDiv, Object.keys(formatMap), fromSelected => {
-    createCustomSelect(toDiv, formatMap[fromSelected], () => {
-      fileInput.setAttribute('accept', '.' + fromSelected);
-      fileLabel.style.display = 'block';
+    toDiv.innerHTML = '';
+    fileLabel.style.display = 'none';
+    fileInput.value = '';
+    filePreview.style.display = 'none';
+    convertBtn.style.display = 'none';
+
+    createCustomSelect(toDiv, formatMap[fromSelected], toSelected => {
+      if (fromSelected && toSelected) {
+        fileInput.setAttribute('accept', '.' + fromSelected);
+        fileLabel.style.display = 'block';
+      }
     });
   });
 
@@ -403,7 +345,6 @@
   function convertFile(from, to) {
     const reader = new FileReader();
     const fileName = selectedFile.name.replace(/\.[^/.]+$/, '');
-
     if (from === 'txt' && to === 'pdf') {
       reader.onload = e => {
         const { jsPDF } = window.jspdf;
