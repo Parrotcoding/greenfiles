@@ -251,6 +251,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
 <script>
   const formatMap = {
     txt: ['pdf'],
@@ -346,7 +348,6 @@
     });
 
     convertBtn.addEventListener('click', () => {
-      console.log('Convert button clicked');
       const from = fromDiv.dataset.value;
       const to = toDiv.dataset.value;
       if (!selectedFile || !from || !to) return alert('Missing info');
@@ -366,12 +367,10 @@
   });
 
   function convertFile(from, to) {
-    console.log('convertFile called with:', from, to);
     const reader = new FileReader();
     const fileName = selectedFile.name.replace(/\.[^/.]+$/, '');
 
     if (from === 'txt' && to === 'pdf') {
-      console.log('Handling TXT to PDF...');
       reader.onload = e => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
@@ -382,7 +381,6 @@
       reader.readAsText(selectedFile);
 
     } else if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(from)) {
-      console.log('Handling image conversion...');
       reader.onload = e => {
         const img = new Image();
         img.onload = () => {
@@ -406,6 +404,70 @@
         img.src = e.target.result;
       };
       reader.readAsDataURL(selectedFile);
+
+    } else if (from === 'pdf' && ['png', 'jpg', 'webp'].includes(to)) {
+      reader.onload = async e => {
+        const typedarray = new Uint8Array(e.target.result);
+        const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+        const previewBox = document.getElementById('previewBox');
+        previewBox.innerHTML = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: 2 });
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          const dataUrl = canvas.toDataURL(`image/${to}`);
+          const img = document.createElement('img');
+          img.src = dataUrl;
+          previewBox.appendChild(img);
+        }
+        document.getElementById('previewFilename').textContent = `${fileName} (pages)`;
+        document.getElementById('previewSection').style.display = 'flex';
+      };
+      reader.readAsArrayBuffer(selectedFile);
+
+    } else if (from === 'docx') {
+      reader.onload = e => {
+        mammoth.convertToHtml({ arrayBuffer: e.target.result }).then(result => {
+          const html = document.createElement('div');
+          html.innerHTML = result.value;
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+          doc.html(html, {
+            callback: function (doc) {
+              const blob = doc.output('blob');
+              if (to === 'pdf') {
+                preview(blob, `${fileName}.pdf`);
+              } else {
+                const reader2 = new FileReader();
+                reader2.onload = e2 => {
+                  const typedarray = new Uint8Array(e2.target.result);
+                  pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
+                    pdf.getPage(1).then(page => {
+                      const viewport = page.getViewport({ scale: 2 });
+                      const canvas = document.createElement('canvas');
+                      canvas.width = viewport.width;
+                      canvas.height = viewport.height;
+                      page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise.then(() => {
+                        canvas.toBlob(blob => {
+                          preview(blob, `${fileName}.${to}`);
+                        }, `image/${to}`);
+                      });
+                    });
+                  });
+                };
+                reader2.readAsArrayBuffer(blob);
+              }
+            },
+            x: 10,
+            y: 10
+          });
+        });
+      };
+      reader.readAsArrayBuffer(selectedFile);
     }
   }
 
