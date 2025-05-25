@@ -1,30 +1,35 @@
-// convert.js (Full file, nothing omitted)
-// Fixes: 1) Prevent duplicate downloads. 2) After any download, show a share‑overlay that re‑uses the landing page share logic.
+// convert.js – full file (nothing omitted)
+// Bugfix pass #2: ensure the share overlay actually appears.
+// Changes:
+//   • createShareOverlay is called as soon as the script runs (after DOM is ready) instead of only inside setup.
+//   • showShareOverlay now lazily initialises the overlay if missing.
+//   • Higher z‑index and explicit width/height for the overlay.
+//   • Added fade‑in animation for visibility.
+//   • filePreview is shown (display:flex) when files are selected.
 
-/****************************
- *  GLOBAL STATE
- ***************************/
+/******************* GLOBALS *******************/
 let selectedFiles = [];
 let convertedFiles = [];
-let shareOverlay; // overlay element reference
+let shareOverlay = null; // will hold overlay element
 
-/****************************
- *  CUSTOM SELECT WIDGET
- ***************************/
+/******************* HELPERS *******************/
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+/******************* CUSTOM SELECT *******************/
 function createCustomSelect(wrapper, options, onSelect) {
-  wrapper.innerHTML = '';
+  wrapper.textContent = '';
   const input = document.createElement('input');
   input.className = 'select-search';
-  input.setAttribute('placeholder', wrapper.getAttribute('data-placeholder') || 'Select');
+  input.placeholder = wrapper.getAttribute('data-placeholder') || 'Select';
   const menu = document.createElement('div');
   menu.className = 'custom-select-options';
-  wrapper.appendChild(input);
-  wrapper.appendChild(menu);
+  wrapper.append(input, menu);
 
-  const renderOptions = (filter = '') => {
-    menu.innerHTML = '';
+  const render = (filter = '') => {
+    menu.textContent = '';
     options
-      .filter(opt => opt.toLowerCase().includes(filter.toLowerCase()))
+      .filter(o => o.toLowerCase().includes(filter.toLowerCase()))
       .forEach(opt => {
         const div = document.createElement('div');
         div.textContent = opt.toUpperCase();
@@ -38,18 +43,16 @@ function createCustomSelect(wrapper, options, onSelect) {
         menu.appendChild(div);
       });
   };
+  render();
 
-  renderOptions();
-  input.addEventListener('input', () => renderOptions(input.value));
+  input.addEventListener('input', () => render(input.value));
   input.addEventListener('focus', () => wrapper.classList.add('open'));
   document.addEventListener('click', e => {
     if (!wrapper.contains(e.target)) wrapper.classList.remove('open');
   });
 }
 
-/****************************
- * FORMAT MAP
- ***************************/
+/******************* FORMAT MAP *******************/
 const formatMap = {
   txt: ['pdf'],
   pdf: ['png', 'jpg', 'webp'],
@@ -62,154 +65,152 @@ const formatMap = {
   svg: ['png', 'jpg', 'webp']
 };
 
-/****************************
- *  INITIALISATION
- ***************************/
+/******************* SETUP *******************/
 function setup() {
-  const fromDiv = document.getElementById('fromFormat');
-  const toDiv = document.getElementById('toFormat');
-  const fileInput = document.getElementById('fileInput');
-  const fileLabel = document.getElementById('fileInputLabel');
-  const filePreview = document.getElementById('filePreview');
-  const convertBtn = document.getElementById('convertBtn');
-  const setupSection = document.getElementById('setupSection');
-  const previewSection = document.getElementById('previewSection');
-  const previewBox = document.getElementById('previewBox');
-  const previewFilename = document.getElementById('previewFilename');
-  const downloadBtn = document.querySelector('.download-btn[onclick="downloadFile()"]');
-  const zipBtn = document.querySelector('.download-btn[onclick="downloadAllImages()"]');
+  const fromDiv = $('#fromFormat');
+  const toDiv = $('#toFormat');
+  const fileInput = $('#fileInput');
+  const fileLabel = $('#fileInputLabel');
+  const filePreview = $('#filePreview');
+  const convertBtn = $('#convertBtn');
+  const setupSection = $('#setupSection');
+  const previewSection = $('#previewSection');
+  const previewBox = $('#previewBox');
+  const previewFilename = $('#previewFilename');
 
-  // Create share overlay once DOM is ready
-  createShareOverlay();
-
-  createCustomSelect(fromDiv, Object.keys(formatMap), fromSelected => {
-    toDiv.innerHTML = '';
+  // Select menus
+  createCustomSelect(fromDiv, Object.keys(formatMap), fromSel => {
+    toDiv.textContent = '';
     fileLabel.style.display = 'none';
     fileInput.value = '';
-    filePreview.innerHTML = '';
+    filePreview.style.display = 'none';
+    filePreview.textContent = '';
     convertBtn.style.display = 'none';
 
-    createCustomSelect(toDiv, formatMap[fromSelected], toSelected => {
-      if (fromSelected && toSelected) {
-        fileInput.setAttribute('accept', '.' + fromSelected);
+    createCustomSelect(toDiv, formatMap[fromSel], toSel => {
+      if (fromSel && toSel) {
+        fileInput.accept = '.' + fromSel;
         fileLabel.style.display = 'block';
       }
     });
   });
 
-  /* File selection */
+  /* File chosen */
   fileInput.addEventListener('change', () => {
     selectedFiles = Array.from(fileInput.files);
     filePreview.innerHTML = '';
+    filePreview.style.display = 'flex';
     selectedFiles.forEach(file => {
       const div = document.createElement('div');
       div.className = 'file-preview';
       const img = document.createElement('img');
       const reader = new FileReader();
-      reader.onload = e => {
-        img.src = e.target.result;
-      };
+      reader.onload = e => (img.src = e.target.result);
       reader.readAsDataURL(file);
       const name = document.createElement('strong');
       name.textContent = file.name;
-      div.appendChild(img);
-      div.appendChild(name);
+      div.append(img, name);
       filePreview.appendChild(div);
     });
     convertBtn.style.display = 'inline-block';
   });
 
-  /* Conversion */
+  /* Convert click */
   convertBtn.addEventListener('click', () => {
     const from = fromDiv.dataset.value;
     const to = toDiv.dataset.value;
     if (!selectedFiles.length || !from || !to) return;
     convertedFiles = [];
-    previewBox.innerHTML = '';
+    previewBox.textContent = '';
     previewFilename.textContent = '';
     previewSection.style.display = 'flex';
     setupSection.style.display = 'none';
-    selectedFiles.forEach(file => convertFile(file, from, to));
+    selectedFiles.forEach(f => convertFile(f, from, to));
   });
 
-  /* Reset */
-  document.getElementById('convertAnother').addEventListener('click', () => {
+  /* Convert another */
+  $('#convertAnother').addEventListener('click', () => {
     previewSection.style.display = 'none';
     setupSection.style.display = 'flex';
     fileInput.value = '';
-    filePreview.innerHTML = '';
+    filePreview.textContent = '';
+    filePreview.style.display = 'none';
     convertBtn.style.display = 'none';
     fileLabel.style.display = 'none';
-    previewBox.innerHTML = 'File preview here';
+    previewBox.textContent = 'File preview here';
   });
-
-  /* IMPORTANT: prevent double callbacks – rely on inline onclick only */
-  // downloadBtn.addEventListener('click', downloadFile);
-  // zipBtn.addEventListener('click', downloadAllImages);
 }
 
-document.addEventListener('DOMContentLoaded', setup);
+document.addEventListener('DOMContentLoaded', () => {
+  setup();
+  createShareOverlay();
+});
 
-/****************************
- *  CONVERT FILES
- ***************************/
+/******************* CONVERSION PIPELINE *******************/
 function convertFile(file, from, to) {
   const fileName = file.name.replace(/\.[^/.]+$/, '');
   const reader = new FileReader();
 
-  const handleBlob = (blob, name) => {
+  const pushResult = (blob, name) => {
     preview(blob, name);
     convertedFiles.push({ name, blob });
-    updateDownloadButtons();
+    toggleDownloadButtons();
   };
 
+  /* txt → pdf */
   if (from === 'txt' && to === 'pdf') {
     reader.onload = e => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
       doc.text(e.target.result, 10, 20);
-      handleBlob(doc.output('blob'), `${fileName}.pdf`);
+      pushResult(doc.output('blob'), `${fileName}.pdf`);
     };
     reader.readAsText(file);
-  } else if (from === 'docx' && to === 'txt') {
+    return;
+  }
+
+  /* docx → txt */
+  if (from === 'docx' && to === 'txt') {
     reader.onload = e => {
-      mammoth.extractRawText({ arrayBuffer: e.target.result }).then(result =>
-        handleBlob(new Blob([result.value], { type: 'text/plain' }), `${fileName}.txt`)
+      mammoth.extractRawText({ arrayBuffer: e.target.result }).then(res =>
+        pushResult(new Blob([res.value], { type: 'text/plain' }), `${fileName}.txt`)
       );
     };
     reader.readAsArrayBuffer(file);
-  } else if (from === 'docx') {
+    return;
+  }
+
+  /* docx → others */
+  if (from === 'docx') {
     reader.onload = e => {
-      mammoth.convertToHtml({ arrayBuffer: e.target.result }).then(result => {
+      mammoth.convertToHtml({ arrayBuffer: e.target.result }).then(res => {
         const html = document.createElement('div');
-        html.innerHTML = result.value;
+        html.innerHTML = res.value;
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         doc.html(html, {
-          callback: doc => {
-            const blob = doc.output('blob');
-            if (to === 'pdf') {
-              handleBlob(blob, `${fileName}.pdf`);
-            } else {
-              const reader2 = new FileReader();
-              reader2.onload = e2 => {
-                const typedarray = new Uint8Array(e2.target.result);
-                pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
-                  pdf.getPage(1).then(page => {
-                    const viewport = page.getViewport({ scale: 2 });
-                    const canvas = document.createElement('canvas');
-                    canvas.width = viewport.width;
-                    canvas.height = viewport.height;
-                    page
-                      .render({ canvasContext: canvas.getContext('2d'), viewport })
-                      .promise.then(() => {
-                        canvas.toBlob(blob => handleBlob(blob, `${fileName}.${to}`), `image/${to}`);
-                      });
-                  });
+          callback: pdfDoc => {
+            const blob = pdfDoc.output('blob');
+            if (to === 'pdf') return pushResult(blob, `${fileName}.pdf`);
+
+            // else convert first page of PDF to image
+            const r2 = new FileReader();
+            r2.onload = ev => {
+              const ta = new Uint8Array(ev.target.result);
+              pdfjsLib.getDocument({ data: ta }).promise.then(pdf => {
+                pdf.getPage(1).then(page => {
+                  const vp = page.getViewport({ scale: 2 });
+                  const canvas = document.createElement('canvas');
+                  canvas.width = vp.width;
+                  canvas.height = vp.height;
+                  page.render({ canvasContext: canvas.getContext('2d'), viewport: vp })
+                    .promise.then(() => {
+                      canvas.toBlob(b => pushResult(b, `${fileName}.${to}`), `image/${to}`);
+                    });
                 });
-              };
-              reader2.readAsArrayBuffer(blob);
-            }
+              });
+            };
+            r2.readAsArrayBuffer(blob);
           },
           x: 10,
           y: 10
@@ -217,41 +218,46 @@ function convertFile(file, from, to) {
       });
     };
     reader.readAsArrayBuffer(file);
-  } else if (from === 'pdf' && ['png', 'jpg', 'webp'].includes(to)) {
+    return;
+  }
+
+  /* pdf → images */
+  if (from === 'pdf' && ['png', 'jpg', 'webp'].includes(to)) {
     reader.onload = async e => {
-      const typedarray = new Uint8Array(e.target.result);
-      const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+      const ta = new Uint8Array(e.target.result);
+      const pdf = await pdfjsLib.getDocument({ data: ta }).promise;
       const zip = new JSZip();
       const folder = zip.folder(fileName);
-      const previewBox = document.getElementById('previewBox');
-      previewBox.innerHTML = '';
+      $('#previewBox').textContent = '';
 
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 1 });
+        const vp = page.getViewport({ scale: 1 });
         const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        await page.render({ canvasContext: ctx, viewport }).promise;
+        canvas.width = vp.width;
+        canvas.height = vp.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
         const dataUrl = canvas.toDataURL(`image/${to}`);
         const img = document.createElement('img');
         img.src = dataUrl;
-        previewBox.appendChild(img);
+        $('#previewBox').appendChild(img);
         folder.file(`page_${i}.${to}`, dataUrl.split(',')[1], { base64: true });
       }
-      zip.generateAsync({ type: 'blob' }).then(blob => handleBlob(blob, `${fileName}.zip`));
+      zip.generateAsync({ type: 'blob' }).then(blob => pushResult(blob, `${fileName}.zip`));
     };
     reader.readAsArrayBuffer(file);
-  } else if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(from)) {
+    return;
+  }
+
+  /* image → x */
+  if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(from)) {
     reader.onload = e => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
         canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        canvas.getContext('2d').drawImage(img, 0, 0);
         if (to === 'pdf') {
           const { jsPDF } = window.jspdf;
           const pdf = new jsPDF({
@@ -260,9 +266,9 @@ function convertFile(file, from, to) {
             format: [img.width, img.height]
           });
           pdf.addImage(img, 'JPEG', 0, 0, img.width, img.height);
-          handleBlob(pdf.output('blob'), `${fileName}.pdf`);
+          pushResult(pdf.output('blob'), `${fileName}.pdf`);
         } else {
-          canvas.toBlob(blob => handleBlob(blob, `${fileName}.${to}`), `image/${to}`);
+          canvas.toBlob(b => pushResult(b, `${fileName}.${to}`), `image/${to}`);
         }
       };
       img.src = e.target.result;
@@ -271,126 +277,118 @@ function convertFile(file, from, to) {
   }
 }
 
-/****************************
- *  PREVIEW UTILS
- ***************************/
+/******************* PREVIEW & UI *******************/
 function preview(blob, name) {
   const ext = name.split('.').pop().toLowerCase();
-  const previewBox = document.getElementById('previewBox');
-  const container = document.createElement('div');
-  container.className = 'preview-card';
-  document.getElementById('previewFilename').textContent = name;
+  const box = $('#previewBox');
+  const card = document.createElement('div');
+  card.className = 'preview-card';
+  $('#previewFilename').textContent = name;
 
   if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
-    const reader = new FileReader();
-    reader.onload = e => {
+    const fr = new FileReader();
+    fr.onload = e => {
       const img = document.createElement('img');
       img.src = e.target.result;
-      container.appendChild(img);
-      previewBox.appendChild(container);
+      card.appendChild(img);
+      box.appendChild(card);
     };
-    reader.readAsDataURL(blob);
+    fr.readAsDataURL(blob);
   } else if (ext === 'pdf') {
     const url = URL.createObjectURL(blob);
     const iframe = document.createElement('iframe');
+    Object.assign(iframe.style, { width: '100%', height: '100%', border: 'none' });
     iframe.src = url;
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.style.border = 'none';
-    container.appendChild(iframe);
-    previewBox.appendChild(container);
+    card.appendChild(iframe);
+    box.appendChild(card);
   } else if (ext === 'txt') {
-    const reader = new FileReader();
-    reader.onload = e => {
+    const fr = new FileReader();
+    fr.onload = e => {
       const pre = document.createElement('pre');
       pre.textContent = e.target.result;
-      container.appendChild(pre);
-      previewBox.appendChild(container);
+      card.appendChild(pre);
+      box.appendChild(card);
     };
-    reader.readAsText(blob);
+    fr.readAsText(blob);
   } else if (ext === 'zip') {
-    const notice = document.createElement('p');
-    notice.textContent = 'Multiple images available in ZIP download.';
-    container.appendChild(notice);
-    previewBox.appendChild(container);
+    const p = document.createElement('p');
+    p.textContent = 'Multiple images                    available in ZIP download.';
+    card.appendChild(p);
+    box.appendChild(card);
   }
 }
 
-/****************************
- *  DOWNLOAD BUTTON STATE
- ***************************/
-function updateDownloadButtons() {
-  const downloadBtn = document.querySelector('.download-btn[onclick="downloadFile()"]');
-  const zipBtn = document.querySelector('.download-btn[onclick="downloadAllImages()"]');
+/******************* DOWNLOAD BUTTON VISIBILITY *******************/
+function toggleDownloadButtons() {
+  const single = $$('.download-btn')[0];
+  const zip   = $$('.download-btn')[1];
   if (convertedFiles.length === 1) {
-    downloadBtn.style.display = 'inline-block';
-    zipBtn.style.display = 'none';
+    single.style.display = 'inline-block';
+    zip.style.display = 'none';
   } else {
-    downloadBtn.style.display = 'none';
-    zipBtn.style.display = 'inline-block';
+    single.style.display = 'none';
+    zip.style.display = 'inline-block';
   }
 }
 
-/****************************
- *  DOWNLOAD ACTIONS + SHARE PROMPT
- ***************************/
+/******************* DOWNLOAD ACTIONS *******************/
 function downloadFile() {
-  if (convertedFiles.length === 1) {
-    const { blob, name } = convertedFiles[0];
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showShareOverlay();
-  }
+  if (convertedFiles.length !== 1) return;
+  const { blob, name } = convertedFiles[0];
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  showShareOverlay();
 }
 
 function downloadAllImages() {
-  if (convertedFiles.length > 1) {
-    const zip = new JSZip();
-    const folder = zip.folder('converted_files');
-    convertedFiles.forEach(({ name, blob }) => folder.file(name, blob));
-    zip.generateAsync({ type: 'blob' }).then(blob => {
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'converted_files.zip';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showShareOverlay();
-    });
-  }
+  if (convertedFiles.length < 2) return;
+  const zip = new JSZip();
+  const folder = zip.folder('converted_files');
+  convertedFiles.forEach(({ name, blob }) => folder.file(name, blob));
+  zip.generateAsync({ type: 'blob' }).then(blob => {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'converted_files.zip';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    showShareOverlay();
+  });
 }
 
-/****************************
- * SHARE OVERLAY & LOGIC
- ***************************/
+/******************* SHARE OVERLAY *******************/
 function createShareOverlay() {
-  // Inject minimal CSS (kept inline to avoid extra files)
-  const style = document.createElement('style');
-  style.textContent = `
-    #share-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:2000;font-family:'Courier New',monospace;}
-    #share-box{background:#fff;border:4px solid #000;border-radius:12px;padding:2rem;box-shadow:6px 6px 0 #000;max-width:320px;width:90%;text-align:center;}
-    #share-box h3{margin-top:0;font-size:1.4rem;}
-    #share-box button{margin-top:1rem;font-weight:bold;border:2px solid #000;border-radius:8px;padding:0.5rem 1rem;cursor:pointer;background:#b6eeb3;box-shadow:3px 3px 0 #000;}
-    #share-fallback-conv{margin-top:1rem;display:none;}
-    #share-fallback-conv input{width:100%;padding:0.4rem;font-family:inherit;border:2px solid #000;border-radius:8px;margin-bottom:0.5rem;}
-  `;
-  document.head.appendChild(style);
+  if (shareOverlay) return; // already done
 
-  // Overlay structure
+  // styles
+  const css = document.createElement('style');
+  css.textContent = `
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    #share-overlay{position:fixed;inset:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.65);z-index:9999;animation:fadeIn 0.3s ease-out;}
+    #share-box{background:#fff;border:4px solid #000;border-radius:12px;padding:2rem;max-width:340px;width:90%;text-align:center;box-shadow:6px 6px 0 #000;font-family:'Courier New',monospace;}
+    #share-box h3{margin:0 0 0.5rem 0;font-size:1.5rem;}
+    #share-box p{margin:0;font-size:0.95rem;}
+    #share-box button{margin-top:1rem;font-weight:bold;border:2px solid #000;border-radius:8px;padding:0.5rem 1rem;cursor:pointer;box-shadow:3px 3px 0 #000;background:#b6eeb3;}
+    #share-box button.secondary{background:white;margin-left:0.5rem;}
+    #share-fallback-conv{margin-top:1rem;display:none;}
+    #share-fallback-conv input{width:100%;padding:0.4rem;border:2px solid #000;border-radius:8px;font-family:inherit;margin-bottom:0.5rem;}
+  `;
+  document.head.appendChild(css);
+
   shareOverlay = document.createElement('div');
   shareOverlay.id = 'share-overlay';
   shareOverlay.innerHTML = `
     <div id="share-box">
       <h3>Enjoying greenfiles?</h3>
-      <p>Share this converter with friends!</p>
+      <p>Share this tool with friends!</p>
       <button id="conv-share-btn">Share</button>
-      <button id="conv-close-btn" style="background:white;margin-left:0.5rem;">Close</button>
+      <button id="conv-close-btn" class="secondary">Close</button>
       <div id="share-fallback-conv">
-        <p style="margin:0 0 0.5rem 0;font-size:0.9rem;">Copy this link:</p>
+        <p style="margin:0 0 0.4rem 0;font-size:0.9rem;">Copy this link:</p>
         <input type="text" id="conv-share-link" readonly>
         <button id="conv-copy-btn">Copy</button>
       </div>
@@ -398,41 +396,23 @@ function createShareOverlay() {
   `;
   document.body.appendChild(shareOverlay);
 
-  // Populate link field
-  document.getElementById('conv-share-link').value = window.location.origin + '/';
-
-  // Event listeners
-  document.getElementById('conv-share-btn').onclick = shareSite;
-  document.getElementById('conv-close-btn').onclick = () => (shareOverlay.style.display = 'none');
-  document.getElementById('conv-copy-btn').onclick = copyLink;
+  $('#conv-share-link').value = window.location.origin + '/';
+  $('#conv-share-btn').onclick = shareSite;
+  $('#conv-close-btn').onclick = () => (shareOverlay.style.display = 'none');
+  $('#conv-copy-btn').onclick = copyLink;
 }
 
 function showShareOverlay() {
+  if (!shareOverlay) createShareOverlay();
   shareOverlay.style.display = 'flex';
 }
 
 function shareSite() {
-  const fallback = document.getElementById('share-fallback-conv');
+  const fallback = $('#share-fallback-conv');
   const shareUrl = window.location.origin + '/';
-  document.getElementById('conv-share-link').value = shareUrl;
-
+  $('#conv-share-link').value = shareUrl;
   if (navigator.share) {
     navigator
       .share({
         title: 'greenfiles',
-        text: 'Convert files privately in your browser with greenfiles!',
-        url: shareUrl
-      })
-      .catch(err => console.log('Share cancelled:', err));
-  } else {
-    fallback.style.display = 'block';
-  }
-}
-
-function copyLink() {
-  const input = document.getElementById('conv-share-link');
-  input.select();
-  input.setSelectionRange(0, 99999);
-  document.execCommand('copy');
-  alert('Link copied to clipboard!');
-}
+        text: 'Convert files privately in your browser with green
