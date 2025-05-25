@@ -135,26 +135,16 @@
     .carousel-track {
       display: flex;
       width: max-content;
-      animation: scrollLeft linear infinite;
-      animation-duration: var(--speed, 20s);
-    }
-
-    .carousel-container:hover .carousel-track {
-      animation-duration: 40s;
+      will-change: transform;
     }
 
     .carousel-track img {
       height: auto;
-      width: 1000px; /* x2 scale */
+      width: 1000px;
       margin-right: 2rem;
       border: 4px solid var(--border-color);
       border-radius: 12px;
       box-shadow: 3px 3px 0 var(--border-color);
-    }
-
-    @keyframes scrollLeft {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
     }
 
     .carousel-container p {
@@ -216,8 +206,8 @@
       </div>
     </div>
 
-    <div class="carousel-container">
-      <div class="carousel-track">
+    <div class="carousel-container" id="carousel">
+      <div class="carousel-track" id="carousel-track">
         <img src="screenshot1.png" alt="Screenshot 1">
         <img src="screenshot2.png" alt="Screenshot 2">
         <img src="screenshot3.png" alt="Screenshot 3">
@@ -232,5 +222,30 @@
   <footer>
     <p>&copy; 2025 greenfiles. Open Source on <a href="https://github.com/Parrotcoding/greenfiles/">GitHub</a>.</p>
   </footer>
+
+  <script>
+    const track = document.getElementById('carousel-track');
+    const carousel = document.getElementById('carousel');
+
+    let scrollX = 0;
+    let speed = 0.5;
+    let paused = false;
+
+    carousel.addEventListener('mouseenter', () => paused = true);
+    carousel.addEventListener('mouseleave', () => paused = false);
+
+    function animate() {
+      if (!paused) {
+        scrollX += speed;
+        if (scrollX >= track.scrollWidth / 2) {
+          scrollX = 0;
+        }
+        track.style.transform = `translateX(${-scrollX}px)`;
+      }
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  </script>
 </body>
 </html>
