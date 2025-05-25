@@ -151,6 +151,45 @@ function convertFile(file, from, to) {
     };
     reader.readAsArrayBuffer(file);
 
+  } else if (from === 'docx') {
+    reader.onload = e => {
+      mammoth.convertToHtml({ arrayBuffer: e.target.result }).then(result => {
+        const html = document.createElement('div');
+        html.innerHTML = result.value;
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.html(html, {
+          callback: function (doc) {
+            const blob = doc.output('blob');
+            if (to === 'pdf') {
+              handleBlob(blob, `${fileName}.pdf`);
+            } else {
+              const reader2 = new FileReader();
+              reader2.onload = e2 => {
+                const typedarray = new Uint8Array(e2.target.result);
+                pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
+                  pdf.getPage(1).then(page => {
+                    const viewport = page.getViewport({ scale: 2 });
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise.then(() => {
+                      canvas.toBlob(blob => {
+                        handleBlob(blob, `${fileName}.${to}`);
+                      }, `image/${to}`);
+                    });
+                  });
+                });
+              };
+              reader2.readAsArrayBuffer(blob);
+            }
+          },
+          x: 10, y: 10
+        });
+      });
+    };
+    reader.readAsArrayBuffer(file);
+
   } else if (from === 'pdf' && ['png', 'jpg', 'webp'].includes(to)) {
     reader.onload = async e => {
       const typedarray = new Uint8Array(e.target.result);
@@ -261,7 +300,9 @@ function downloadFile() {
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = name;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   }
 }
 
@@ -274,7 +315,9 @@ function downloadAllImages() {
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = 'converted_files.zip';
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     });
   }
 }
