@@ -338,7 +338,6 @@
     const from = fromDiv.dataset.value;
     const to = toDiv.dataset.value;
     if (!selectedFile || !from || !to) return alert('Missing info');
-    document.getElementById('setupSection').style.display = 'none';
     convertFile(from, to);
   });
 
@@ -380,15 +379,20 @@
       const reader = new FileReader();
       reader.onload = e => {
         previewBox.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+        finishPreview(name);
       };
       reader.readAsDataURL(blob);
     } else if (ext === 'pdf') {
       const url = URL.createObjectURL(blob);
       previewBox.innerHTML = `<iframe src="${url}" style="width:100%; height:100%; border:none;"></iframe>`;
+      finishPreview(name);
     }
+  }
 
+  function finishPreview(name) {
     document.getElementById('previewFilename').textContent = name;
     document.getElementById('previewSection').style.display = 'flex';
+    document.getElementById('setupSection').style.display = 'none';
   }
 
   function downloadFile() {
@@ -415,5 +419,4 @@
     });
   }
 </script>
-
 </html>
