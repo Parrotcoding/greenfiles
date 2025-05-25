@@ -345,9 +345,12 @@
   });
 
   function convertFile(from, to) {
+    console.log('convertFile called with:', from, to);
     const reader = new FileReader();
     const fileName = selectedFile.name.replace(/\.[^/.]+$/, '');
+
     if (from === 'txt' && to === 'pdf') {
+      console.log('Handling TXT to PDF...');
       reader.onload = e => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
@@ -356,16 +359,27 @@
         preview(blob, `${fileName}.pdf`);
       };
       reader.readAsText(selectedFile);
+
     } else if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(from)) {
+      console.log('Handling image conversion...');
       reader.onload = e => {
         const img = new Image();
         img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
           if (to === 'pdf') {
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF({ orientation: img.width > img.height ? 'landscape' : 'portrait', unit: 'px', format: [img.width, img.height] });
             pdf.addImage(img, 'JPEG', 0, 0, img.width, img.height);
             const blob = pdf.output('blob');
             preview(blob, `${fileName}.pdf`);
+          } else {
+            canvas.toBlob(blob => {
+              preview(blob, `${fileName}.${to}`);
+            }, `image/${to}`);
           }
         };
         img.src = e.target.result;
@@ -418,5 +432,4 @@
     });
   }
 </script>
-
 </html>
