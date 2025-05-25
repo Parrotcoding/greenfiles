@@ -1,4 +1,6 @@
 // convert.js (Full file, nothing omitted)
+// Fix: prevented duplicate downloads by relying on the existing inline onclick handlers only.
+// The two extra addEventListener calls were removed.
 
 let selectedFiles = [];
 let convertedFiles = [];
@@ -119,8 +121,9 @@ function setup() {
     previewBox.innerHTML = 'File preview here';
   });
 
-  downloadBtn.addEventListener('click', downloadFile);
-  zipBtn.addEventListener('click', downloadAllImages);
+  // Duplicate‐download fix: rely on the inline onclick handlers only.
+  // downloadBtn.addEventListener('click', downloadFile);
+  // zipBtn.addEventListener('click', downloadAllImages);
 }
 
 document.addEventListener('DOMContentLoaded', setup);
