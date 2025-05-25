@@ -135,11 +135,17 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
   <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.2/dist/ffmpeg.min.js"></script>
   <script>
-    const { createFFmpeg, fetchFile } = FFmpeg;
-    const ffmpeg = createFFmpeg({ log: false });
+    let ffmpeg;
+    let createFFmpeg;
+    let fetchFile;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      ({ createFFmpeg, fetchFile } = window.FFmpeg);
+      ffmpeg = createFFmpeg({ log: false });
+    });
 
     async function ensureFFmpegLoaded() {
-      if (!ffmpeg.isLoaded()) {
+      if (!ffmpeg?.isLoaded()) {
         await ffmpeg.load();
       }
     }
@@ -207,6 +213,7 @@
 
       for (const file of shrinkFiles) {
         const type = file.type;
+
         if (type.startsWith('image/')) {
           const img = await loadImageFromFile(file);
           const canvas = document.createElement('canvas');
