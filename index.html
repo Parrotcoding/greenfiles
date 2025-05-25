@@ -379,20 +379,16 @@
       const reader = new FileReader();
       reader.onload = e => {
         previewBox.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-        finishPreview(name);
+        document.getElementById('previewFilename').textContent = name;
+        document.getElementById('previewSection').style.display = 'flex';
       };
       reader.readAsDataURL(blob);
     } else if (ext === 'pdf') {
       const url = URL.createObjectURL(blob);
       previewBox.innerHTML = `<iframe src="${url}" style="width:100%; height:100%; border:none;"></iframe>`;
-      finishPreview(name);
+      document.getElementById('previewFilename').textContent = name;
+      document.getElementById('previewSection').style.display = 'flex';
     }
-  }
-
-  function finishPreview(name) {
-    document.getElementById('previewFilename').textContent = name;
-    document.getElementById('previewSection').style.display = 'flex';
-    document.getElementById('setupSection').style.display = 'none';
   }
 
   function downloadFile() {
@@ -419,4 +415,5 @@
     });
   }
 </script>
+
 </html>
