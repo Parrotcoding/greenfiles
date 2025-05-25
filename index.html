@@ -243,7 +243,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
-
 <script>
   const formatMap = {
     txt: ['pdf'],
@@ -339,6 +338,7 @@
     const from = fromDiv.dataset.value;
     const to = toDiv.dataset.value;
     if (!selectedFile || !from || !to) return alert('Missing info');
+    document.getElementById('setupSection').style.display = 'none';
     convertFile(from, to);
   });
 
@@ -375,17 +375,20 @@
   function preview(blob, name) {
     const ext = name.split('.').pop().toLowerCase();
     const previewBox = document.getElementById('previewBox');
-    const reader = new FileReader();
-    reader.onload = e => {
-      if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
+
+    if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
+      const reader = new FileReader();
+      reader.onload = e => {
         previewBox.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
-      } else if (ext === 'pdf') {
-        previewBox.innerHTML = `<iframe src="${e.target.result}" style="width:100%; height:100%; border:none;"></iframe>`;
-      }
-      document.getElementById('previewFilename').textContent = name;
-      document.getElementById('previewSection').style.display = 'flex';
-    };
-    reader.readAsDataURL(blob);
+      };
+      reader.readAsDataURL(blob);
+    } else if (ext === 'pdf') {
+      const url = URL.createObjectURL(blob);
+      previewBox.innerHTML = `<iframe src="${url}" style="width:100%; height:100%; border:none;"></iframe>`;
+    }
+
+    document.getElementById('previewFilename').textContent = name;
+    document.getElementById('previewSection').style.display = 'flex';
   }
 
   function downloadFile() {
@@ -412,4 +415,5 @@
     });
   }
 </script>
+
 </html>
