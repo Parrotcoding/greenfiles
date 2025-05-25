@@ -63,22 +63,22 @@
     border-radius: 1rem;
   }
 
-.upload-label {
-  position: relative;
-  display: none;
-  background: var(--accent-color);
-  border: 2px dashed var(--border-color);
-  border-radius: 16px;
-  padding: 1.5rem;
-  width: 100%;
-  max-width: 500px;
-  cursor: pointer;
-  font-weight: bold;
-  text-align: center;
-  box-shadow: 3px 3px 0 var(--border-color);
-  margin: 1.5rem auto 0 auto; /* top margin + center horizontally */
-  z-index: 1;
-}
+  .upload-label {
+    position: relative;
+    display: none;
+    background: var(--accent-color);
+    border: 2px dashed var(--border-color);
+    border-radius: 16px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 500px;
+    cursor: pointer;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 3px 3px 0 var(--border-color);
+    margin: 1.5rem auto 0 auto;
+    z-index: 1;
+  }
 
   .file-preview {
     display: flex;
@@ -97,7 +97,8 @@
   }
 
   .format-btn,
-  .download-btn {
+  .download-btn,
+  #convertAnother {
     background: var(--accent-color);
     border: 2px solid var(--border-color);
     border-radius: 999px;
@@ -106,6 +107,14 @@
     cursor: pointer;
     box-shadow: 2px 2px 0 var(--border-color);
     margin-top: 1rem;
+    transition: transform 0.1s ease;
+  }
+
+  .format-btn:active,
+  .download-btn:active,
+  #convertAnother:active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--border-color);
   }
 
   .preview-container {
@@ -153,55 +162,8 @@
     color: gray;
     padding: 1rem;
   }
-
-  .custom-select {
-    position: relative;
-    border: 2px solid var(--border-color);
-    border-radius: 16px;
-    background: var(--accent-color);
-    box-shadow: 2px 2px 0 var(--border-color);
-    margin-bottom: 1rem;
-  }
-
-  .select-search {
-    all: unset;
-    width: 100%;
-    padding: 0.75rem 1rem;
-    font-weight: bold;
-    background: var(--accent-color);
-    border-radius: 16px;
-    box-sizing: border-box;
-    font-family: inherit;
-  }
-
-  .custom-select-options {
-    display: none;
-    position: absolute;
-    background: var(--accent-color);
-    border: 2px solid var(--border-color);
-    border-top: none;
-    width: 100%;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 100;
-    border-radius: 0 0 12px 12px;
-  }
-
-  .custom-select.open .custom-select-options {
-    display: block;
-  }
-
-  .custom-select-options div {
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    font-weight: bold;
-    border-top: 1px solid var(--border-color);
-  }
-
-  .custom-select-options div:hover {
-    background-color: var(--bg-color);
-  }
 </style>
+
 </head>
 <body>
   <header>
