@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Compress Tools — Greenfiles</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="faviconfiles.png" />
+  <style>
+    :root {
+      --bg-color: #b6eeb3;
+      --text-color: black;
+      --accent-color: white;
+      --border-color: black;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg-color);
+      font-family: 'Courier New', Courier, monospace;
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--bg-color);
+      padding: 1rem;
+      border-bottom: 4px solid var(--border-color);
+      font-size: 1.5rem;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    main {
+      display: flex;
+      flex: 1;
+      padding: 2rem;
+      gap: 2rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .column {
+      background: var(--accent-color);
+      border: 4px solid var(--border-color);
+      padding: 1.5rem;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 500px;
+      box-sizing: border-box;
+    }
+
+    .column h2 {
+      margin-top: 0;
+      font-size: 1.2rem;
+    }
+
+    label.uploader {
+      display: block;
+      border: 3px dashed var(--border-color);
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+    }
+
+    label.uploader:hover {
+      background: #e0f5e0;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    #file-list-zip,
+    #file-list-shrink {
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+
+    button {
+      padding: 0.6rem 1.4rem;
+      background: var(--accent-color);
+      border: 3px solid var(--border-color);
+      box-shadow: 3px 3px 0 var(--border-color);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 12px;
+      margin-top: 1rem;
+    }
+
+    button:hover {
+      background: #d7f7d3;
+    }
+
+    a.download {
+      display: block;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <header>Compress Tools — Greenfiles</header>
+
+  <main>
+    <!-- ZIP COLUMN -->
+    <div class="column">
+      <h2>ZIP Files</h2>
+      <label class="uploader" id="zip-label">
+        Click or drop files here to ZIP
+        <input type="file" id="zip-input" multiple />
+        <div id="file-list-zip"></div>
+      </label>
+      <button id="zip-btn" disabled>Compress to ZIP</button>
+      <a id="zip-download" class="download" download="compressed.zip">⬇️ Download ZIP</a>
+    </div>
+
+    <!-- SHRINK COLUMN -->
+    <div class="column">
+      <h2>Shrink Files</h2>
+      <label class="uploader" id="shrink-label">
+        Click or drop files to shrink
+        <input type="file" id="shrink-input" multiple />
+        <div id="file-list-shrink"></div>
+      </label>
+      <button id="shrink-btn" disabled>Shrink Files</button>
+      <a id="shrink-download" class="download" download="shrunk.zip">⬇️ Download Shrunk ZIP</a>
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.2/dist/ffmpeg.min.js"></script>
+  <script>
+    const { createFFmpeg, fetchFile } = FFmpeg;
+    const ffmpeg = createFFmpeg({ log: false });
+
+    async function ensureFFmpegLoaded() {
+      if (!ffmpeg.isLoaded()) {
+        await ffmpeg.load();
+      }
+    }
+
+    function loadImageFromFile(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = () => {
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // ZIP FILES
+    const zipInput = document.getElementById('zip-input');
+    const zipLabel = document.getElementById('zip-label');
+    const zipList = document.getElementById('file-list-zip');
+    const zipBtn = document.getElementById('zip-btn');
+    const zipDownload = document.getElementById('zip-download');
+    let zipFiles = [];
+
+    zipLabel.addEventListener('click', () => zipInput.click());
+    zipInput.addEventListener('change', () => {
+      zipFiles = Array.from(zipInput.files);
+      zipList.innerHTML = zipFiles.map(f => '• ' + f.name).join('<br>');
+      zipBtn.disabled = zipFiles.length === 0;
+      zipDownload.style.display = 'none';
+    });
+
+    zipBtn.addEventListener('click', async () => {
+      const zip = new JSZip();
+      for (const file of zipFiles) {
+        zip.file(file.name, file);
+      }
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      zipDownload.href = url;
+      zipDownload.style.display = 'inline-block';
+    });
+
+    // SHRINK FILES
+    const shrinkInput = document.getElementById('shrink-input');
+    const shrinkLabel = document.getElementById('shrink-label');
+    const shrinkList = document.getElementById('file-list-shrink');
+    const shrinkBtn = document.getElementById('shrink-btn');
+    const shrinkDownload = document.getElementById('shrink-download');
+    let shrinkFiles = [];
+
+    shrinkLabel.addEventListener('click', () => shrinkInput.click());
+    shrinkInput.addEventListener('change', () => {
+      shrinkFiles = Array.from(shrinkInput.files);
+      shrinkList.innerHTML = shrinkFiles.map(f => '• ' + f.name).join('<br>');
+      shrinkBtn.disabled = shrinkFiles.length === 0;
+      shrinkDownload.style.display = 'none';
+    });
+
+    shrinkBtn.addEventListener('click', async () => {
+      const zip = new JSZip();
+      await ensureFFmpegLoaded();
+
+      for (const file of shrinkFiles) {
+        const type = file.type;
+        if (type.startsWith('image/')) {
+          const img = await loadImageFromFile(file);
+          const canvas = document.createElement('canvas');
+          const scale = 0.5;
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.6));
+          zip.file(file.name.replace(/\.\w+$/, '.jpg'), blob);
+        } else if (type === 'audio/mpeg') {
+          const inputName = 'input.mp3';
+          const outputName = 'output.mp3';
+          ffmpeg.FS('writeFile', inputName, await fetchFile(file));
+          await ffmpeg.run('-i', inputName, '-b:a', '96k', outputName);
+          const data = ffmpeg.FS('readFile', outputName);
+          zip.file(file.name, new Blob([data.buffer], { type: 'audio/mpeg' }));
+          ffmpeg.FS('unlink', inputName);
+          ffmpeg.FS('unlink', outputName);
+        } else {
+          zip.file(file.name, file); // fallback
+        }
+      }
+
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      shrinkDownload.href = url;
+      shrinkDownload.style.display = 'inline-block';
+    });
+  </script>
+</body>
+</html>
