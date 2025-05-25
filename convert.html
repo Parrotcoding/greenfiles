@@ -254,7 +254,41 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
 <script>
-  const formatMap = {
+  function createCustomSelect(wrapper, options, onSelect) {
+    wrapper.innerHTML = '';
+    const input = document.createElement('input');
+    input.className = 'select-search';
+    input.setAttribute('placeholder', wrapper.getAttribute('data-placeholder') || 'Select');
+    const menu = document.createElement('div');
+    menu.className = 'custom-select-options';
+    wrapper.appendChild(input);
+    wrapper.appendChild(menu);
+
+    const renderOptions = (filter = '') => {
+      menu.innerHTML = '';
+      options.filter(opt => opt.toLowerCase().includes(filter.toLowerCase())).forEach(opt => {
+        const div = document.createElement('div');
+        div.textContent = opt.toUpperCase();
+        div.dataset.value = opt;
+        div.onclick = () => {
+          input.value = opt.toUpperCase();
+          wrapper.dataset.value = opt;
+          wrapper.classList.remove('open');
+          onSelect(opt);
+        };
+        menu.appendChild(div);
+      });
+    };
+
+    renderOptions();
+    input.addEventListener('input', () => renderOptions(input.value));
+    input.addEventListener('focus', () => wrapper.classList.add('open'));
+    document.addEventListener('click', e => {
+      if (!wrapper.contains(e.target)) wrapper.classList.remove('open');
+    });
+  }
+
+    const formatMap = {
     txt: ['pdf'],
     pdf: ['png', 'jpg', 'webp'],
     docx: ['pdf', 'jpg', 'png', 'txt'],
@@ -334,185 +368,185 @@
       fileLabel.style.display = 'none';
       previewBox.innerHTML = 'File preview here';
     });
-  });
 
-  function convertFile(file, from, to) {
-    const fileName = file.name.replace(/\.[^/.]+$/, '');
-    const reader = new FileReader();
+    function convertFile(file, from, to) {
+      const fileName = file.name.replace(/\.[^/.]+$/, '');
+      const reader = new FileReader();
 
-    if (from === 'txt' && to === 'pdf') {
-      reader.onload = e => {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.text(e.target.result, 10, 20);
-        const blob = doc.output('blob');
-        preview(blob, `${fileName}.pdf`);
-      };
-      reader.readAsText(file);
-
-    } else if (from === 'docx' && to === 'txt') {
-      reader.onload = e => {
-        mammoth.extractRawText({ arrayBuffer: e.target.result })
-          .then(result => {
-            const blob = new Blob([result.value], { type: 'text/plain' });
-            preview(blob, `${fileName}.txt`);
-          });
-      };
-      reader.readAsArrayBuffer(file);
-
-    } else if (from === 'docx') {
-      reader.onload = e => {
-        mammoth.convertToHtml({ arrayBuffer: e.target.result }).then(result => {
-          const html = document.createElement('div');
-          html.innerHTML = result.value;
+      if (from === 'txt' && to === 'pdf') {
+        reader.onload = e => {
           const { jsPDF } = window.jspdf;
           const doc = new jsPDF();
-          doc.html(html, {
-            callback: function (doc) {
-              const blob = doc.output('blob');
-              if (to === 'pdf') {
-                preview(blob, `${fileName}.pdf`);
-              } else {
-                const reader2 = new FileReader();
-                reader2.onload = e2 => {
-                  const typedarray = new Uint8Array(e2.target.result);
-                  pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
-                    const zip = new JSZip();
-                    const folder = zip.folder(fileName);
-                    const addPage = async (i) => {
-                      const page = await pdf.getPage(i);
-                      const viewport = page.getViewport({ scale: 2 });
-                      const canvas = document.createElement('canvas');
-                      const ctx = canvas.getContext('2d');
-                      canvas.width = viewport.width;
-                      canvas.height = viewport.height;
-                      await page.render({ canvasContext: ctx, viewport }).promise;
-                      const dataUrl = canvas.toDataURL(`image/${to}`);
-                      folder.file(`page_${i}.${to}`, dataUrl.split(',')[1], { base64: true });
-                    };
-                    Promise.all([...Array(pdf.numPages)].map((_, i) => addPage(i + 1))).then(() => {
-                      zip.generateAsync({ type: 'blob' }).then(blob => preview(blob, `${fileName}.zip`));
-                    });
-                  });
-                };
-                reader2.readAsArrayBuffer(blob);
-              }
-            },
-            x: 10, y: 10
-          });
-        });
-      };
-      reader.readAsArrayBuffer(file);
-
-    } else if (from === 'pdf' && ['png', 'jpg', 'webp'].includes(to)) {
-      reader.onload = async e => {
-        const typedarray = new Uint8Array(e.target.result);
-        const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
-        const zip = new JSZip();
-        const folder = zip.folder(fileName);
-        const previewBox = document.getElementById('previewBox');
-        previewBox.innerHTML = '';
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const viewport = page.getViewport({ scale: 2 });
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          await page.render({ canvasContext: ctx, viewport }).promise;
-          const dataUrl = canvas.toDataURL(`image/${to}`);
-          const img = document.createElement('img');
-          img.src = dataUrl;
-          previewBox.appendChild(img);
-          folder.file(`page_${i}.${to}`, dataUrl.split(',')[1], { base64: true });
-        }
-        zip.generateAsync({ type: 'blob' }).then(blob => preview(blob, `${fileName}.zip`));
-      };
-      reader.readAsArrayBuffer(file);
-
-    } else if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(from)) {
-      reader.onload = e => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          if (to === 'pdf') {
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF({ orientation: img.width > img.height ? 'landscape' : 'portrait', unit: 'px', format: [img.width, img.height] });
-            pdf.addImage(img, 'JPEG', 0, 0, img.width, img.height);
-            const blob = pdf.output('blob');
-            preview(blob, `${fileName}.pdf`);
-          } else {
-            canvas.toBlob(blob => {
-              preview(blob, `${fileName}.${to}`);
-            }, `image/${to}`);
-          }
+          doc.text(e.target.result, 10, 20);
+          const blob = doc.output('blob');
+          preview(blob, `${fileName}.pdf`);
         };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-  }
+        reader.readAsText(file);
 
-  function preview(blob, name) {
-    const ext = name.split('.').pop().toLowerCase();
-    const previewBox = document.getElementById('previewBox');
-    const container = document.createElement('div');
-    container.className = 'preview-card';
-    const label = document.createElement('div');
-    label.className = 'preview-filename';
-    label.textContent = name;
+      } else if (from === 'docx' && to === 'txt') {
+        reader.onload = e => {
+          mammoth.extractRawText({ arrayBuffer: e.target.result })
+            .then(result => {
+              const blob = new Blob([result.value], { type: 'text/plain' });
+              preview(blob, `${fileName}.txt`);
+            });
+        };
+        reader.readAsArrayBuffer(file);
 
-    if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = document.createElement('img');
-        img.src = e.target.result;
-        container.appendChild(label);
-        container.appendChild(img);
-        previewBox.appendChild(container);
-      };
-      reader.readAsDataURL(blob);
-    } else if (ext === 'pdf') {
-      const url = URL.createObjectURL(blob);
-      const iframe = document.createElement('iframe');
-      iframe.src = url;
-      iframe.style.width = '100%';
-      iframe.style.height = '400px';
-      iframe.style.border = 'none';
-      container.appendChild(label);
-      container.appendChild(iframe);
-      previewBox.appendChild(container);
-    } else if (ext === 'txt') {
-      const reader = new FileReader();
-      reader.onload = e => {
-        const pre = document.createElement('pre');
-        pre.textContent = e.target.result;
-        container.appendChild(label);
-        container.appendChild(pre);
-        previewBox.appendChild(container);
-      };
-      reader.readAsText(blob);
-    } else if (ext === 'zip') {
-      const zipNotice = document.createElement('p');
-      zipNotice.textContent = 'Multiple images available in ZIP download.';
-      const downloadBtn = document.createElement('button');
-      downloadBtn.className = 'download-btn';
-      downloadBtn.textContent = 'Download ZIP';
-      downloadBtn.onclick = () => {
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = name;
-        link.click();
-      };
-      container.appendChild(label);
-      container.appendChild(zipNotice);
-      container.appendChild(downloadBtn);
-      previewBox.appendChild(container);
+      } else if (from === 'docx') {
+        reader.onload = e => {
+          mammoth.convertToHtml({ arrayBuffer: e.target.result }).then(result => {
+            const html = document.createElement('div');
+            html.innerHTML = result.value;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.html(html, {
+              callback: function (doc) {
+                const blob = doc.output('blob');
+                if (to === 'pdf') {
+                  preview(blob, `${fileName}.pdf`);
+                } else {
+                  const reader2 = new FileReader();
+                  reader2.onload = e2 => {
+                    const typedarray = new Uint8Array(e2.target.result);
+                    pdfjsLib.getDocument({ data: typedarray }).promise.then(pdf => {
+                      const zip = new JSZip();
+                      const folder = zip.folder(fileName);
+                      const addPage = async (i) => {
+                        const page = await pdf.getPage(i);
+                        const viewport = page.getViewport({ scale: 2 });
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        await page.render({ canvasContext: ctx, viewport }).promise;
+                        const dataUrl = canvas.toDataURL(`image/${to}`);
+                        folder.file(`page_${i}.${to}`, dataUrl.split(',')[1], { base64: true });
+                      };
+                      Promise.all([...Array(pdf.numPages)].map((_, i) => addPage(i + 1))).then(() => {
+                        zip.generateAsync({ type: 'blob' }).then(blob => preview(blob, `${fileName}.zip`));
+                      });
+                    });
+                  };
+                  reader2.readAsArrayBuffer(blob);
+                }
+              },
+              x: 10, y: 10
+            });
+          });
+        };
+        reader.readAsArrayBuffer(file);
+
+      } else if (from === 'pdf' && ['png', 'jpg', 'webp'].includes(to)) {
+        reader.onload = async e => {
+          const typedarray = new Uint8Array(e.target.result);
+          const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+          const zip = new JSZip();
+          const folder = zip.folder(fileName);
+          const previewBox = document.getElementById('previewBox');
+          previewBox.innerHTML = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 2 });
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            const dataUrl = canvas.toDataURL(`image/${to}`);
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            previewBox.appendChild(img);
+            folder.file(`page_${i}.${to}`, dataUrl.split(',')[1], { base64: true });
+          }
+          zip.generateAsync({ type: 'blob' }).then(blob => preview(blob, `${fileName}.zip`));
+        };
+        reader.readAsArrayBuffer(file);
+
+      } else if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'bmp'].includes(from)) {
+        reader.onload = e => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            if (to === 'pdf') {
+              const { jsPDF } = window.jspdf;
+              const pdf = new jsPDF({ orientation: img.width > img.height ? 'landscape' : 'portrait', unit: 'px', format: [img.width, img.height] });
+              pdf.addImage(img, 'JPEG', 0, 0, img.width, img.height);
+              const blob = pdf.output('blob');
+              preview(blob, `${fileName}.pdf`);
+            } else {
+              canvas.toBlob(blob => {
+                preview(blob, `${fileName}.${to}`);
+              }, `image/${to}`);
+            }
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
     }
-  }
+
+    function preview(blob, name) {
+      const ext = name.split('.').pop().toLowerCase();
+      const previewBox = document.getElementById('previewBox');
+      const container = document.createElement('div');
+      container.className = 'preview-card';
+      const label = document.createElement('div');
+      label.className = 'preview-filename';
+      label.textContent = name;
+
+      if (['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext)) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          container.appendChild(label);
+          container.appendChild(img);
+          previewBox.appendChild(container);
+        };
+        reader.readAsDataURL(blob);
+      } else if (ext === 'pdf') {
+        const url = URL.createObjectURL(blob);
+        const iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.style.width = '100%';
+        iframe.style.height = '400px';
+        iframe.style.border = 'none';
+        container.appendChild(label);
+        container.appendChild(iframe);
+        previewBox.appendChild(container);
+      } else if (ext === 'txt') {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const pre = document.createElement('pre');
+          pre.textContent = e.target.result;
+          container.appendChild(label);
+          container.appendChild(pre);
+          previewBox.appendChild(container);
+        };
+        reader.readAsText(blob);
+      } else if (ext === 'zip') {
+        const zipNotice = document.createElement('p');
+        zipNotice.textContent = 'Multiple images available in ZIP download.';
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'download-btn';
+        downloadBtn.textContent = 'Download ZIP';
+        downloadBtn.onclick = () => {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = name;
+          link.click();
+        };
+        container.appendChild(label);
+        container.appendChild(zipNotice);
+        container.appendChild(downloadBtn);
+        previewBox.appendChild(container);
+      }
+    }
+  });
 </script>
 </html>
