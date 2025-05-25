@@ -292,53 +292,56 @@
     });
   }
 
-  const fromDiv = document.getElementById('fromFormat');
-  const toDiv = document.getElementById('toFormat');
-  const fileInput = document.getElementById('fileInput');
-  const fileLabel = document.getElementById('fileInputLabel');
-  const filePreview = document.getElementById('filePreview');
-  const convertBtn = document.getElementById('convertBtn');
+  document.addEventListener('DOMContentLoaded', () => {
+    const fromDiv = document.getElementById('fromFormat');
+    const toDiv = document.getElementById('toFormat');
+    const fileInput = document.getElementById('fileInput');
+    const fileLabel = document.getElementById('fileInputLabel');
+    const filePreview = document.getElementById('filePreview');
+    const convertBtn = document.getElementById('convertBtn');
 
-  createCustomSelect(fromDiv, Object.keys(formatMap), fromSelected => {
-    toDiv.innerHTML = '';
-    fileLabel.style.display = 'none';
-    fileInput.value = '';
-    filePreview.style.display = 'none';
-    convertBtn.style.display = 'none';
-
-    createCustomSelect(toDiv, formatMap[fromSelected], toSelected => {
-      if (fromSelected && toSelected) {
-        fileInput.setAttribute('accept', '.' + fromSelected);
-        fileLabel.style.display = 'block';
-      }
-    });
-  });
-
-  fileInput.addEventListener('change', () => {
-    const file = fileInput.files[0];
-    if (!file) return;
-    selectedFile = file;
-    const reader = new FileReader();
-    reader.onload = () => {
-      filePreview.innerHTML = '';
-      const img = document.createElement('img');
-      img.src = reader.result;
-      filePreview.appendChild(img);
-      const name = document.createElement('strong');
-      name.textContent = file.name;
-      filePreview.appendChild(name);
-      filePreview.style.display = 'flex';
+    createCustomSelect(fromDiv, Object.keys(formatMap), fromSelected => {
+      toDiv.innerHTML = '';
       fileLabel.style.display = 'none';
-      convertBtn.style.display = 'inline-block';
-    };
-    reader.readAsDataURL(file);
-  });
+      fileInput.value = '';
+      filePreview.style.display = 'none';
+      convertBtn.style.display = 'none';
 
-  convertBtn.addEventListener('click', () => {
-    const from = fromDiv.dataset.value;
-    const to = toDiv.dataset.value;
-    if (!selectedFile || !from || !to) return alert('Missing info');
-    convertFile(from, to);
+      createCustomSelect(toDiv, formatMap[fromSelected], toSelected => {
+        if (fromSelected && toSelected) {
+          fileInput.setAttribute('accept', '.' + fromSelected);
+          fileLabel.style.display = 'block';
+        }
+      });
+    });
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = () => {
+        filePreview.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = reader.result;
+        filePreview.appendChild(img);
+        const name = document.createElement('strong');
+        name.textContent = file.name;
+        filePreview.appendChild(name);
+        filePreview.style.display = 'flex';
+        fileLabel.style.display = 'none';
+        convertBtn.style.display = 'inline-block';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    convertBtn.addEventListener('click', () => {
+      console.log('Convert button clicked');
+      const from = fromDiv.dataset.value;
+      const to = toDiv.dataset.value;
+      if (!selectedFile || !from || !to) return alert('Missing info');
+      convertFile(from, to);
+    });
   });
 
   function convertFile(from, to) {
