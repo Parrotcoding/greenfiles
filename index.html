@@ -124,24 +124,43 @@
       font-size: 1.3rem;
     }
 
-    .gallery {
+    .carousel-container {
       margin-top: 4rem;
-      text-align: center;
+      overflow: hidden;
+      border-top: 4px solid var(--border-color);
+      border-bottom: 4px solid var(--border-color);
+      position: relative;
     }
 
-    .gallery h3 {
-      font-size: 1.8rem;
-      margin-bottom: 1rem;
+    .carousel-track {
+      display: flex;
+      width: max-content;
+      animation: scrollLeft linear infinite;
+      animation-duration: var(--speed, 20s);
     }
 
-    .gallery img {
-      width: 500px;
+    .carousel-container:hover .carousel-track {
+      animation-duration: 40s;
+    }
+
+    .carousel-track img {
       height: auto;
-      max-width: 90%;
+      width: 1000px; /* x2 scale */
+      margin-right: 2rem;
       border: 4px solid var(--border-color);
       border-radius: 12px;
       box-shadow: 3px 3px 0 var(--border-color);
-      transition: opacity 1s ease-in-out;
+    }
+
+    @keyframes scrollLeft {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    .carousel-container p {
+      text-align: center;
+      font-style: italic;
+      margin: 1rem 0;
     }
 
     footer {
@@ -197,33 +216,21 @@
       </div>
     </div>
 
-    <div class="gallery">
-      <h3>See greenfiles in Action</h3>
-      <img id="gallery-img" src="screenshot1.png" alt="App screenshot" />
+    <div class="carousel-container">
+      <div class="carousel-track">
+        <img src="screenshot1.png" alt="Screenshot 1">
+        <img src="screenshot2.png" alt="Screenshot 2">
+        <img src="screenshot3.png" alt="Screenshot 3">
+        <img src="screenshot1.png" alt="Screenshot 1 clone">
+        <img src="screenshot2.png" alt="Screenshot 2 clone">
+        <img src="screenshot3.png" alt="Screenshot 3 clone">
+      </div>
+      <p>Some screen images were simulated.</p>
     </div>
   </section>
 
   <footer>
     <p>&copy; 2025 greenfiles. Open Source on <a href="https://github.com/Parrotcoding/greenfiles/">GitHub</a>.</p>
   </footer>
-
-  <script>
-    const images = [
-      "screenshot1.png",
-      "screenshot2.png",
-      "screenshot3.png"
-    ];
-    let index = 0;
-    const imgEl = document.getElementById("gallery-img");
-
-    setInterval(() => {
-      index = (index + 1) % images.length;
-      imgEl.style.opacity = 0;
-      setTimeout(() => {
-        imgEl.src = images[index];
-        imgEl.style.opacity = 1;
-      }, 400);
-    }, 3000);
-  </script>
 </body>
 </html>
