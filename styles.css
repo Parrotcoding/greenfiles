@@ -37,9 +37,7 @@ main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; /* Add this to vertically center if needed */
-  min-height: 100vh; /* Make main take full height to help vertical centering */
-  margin-top: 0; /* Remove if vertical centering is needed */
+  margin-top: 2rem;
 }
 
 .uploader {
@@ -51,12 +49,13 @@ main {
   padding: 2rem;
   text-align: center;
   border-radius: 1rem;
-  margin: 0 auto; /* Add this to ensure horizontal centering fallback */
 }
 
 .upload-label {
   position: relative;
-  display: none;
+  display: flex; /* changed from none */
+  justify-content: center;
+  align-items: center;
   background: var(--accent-color);
   border: 2px dashed var(--border-color);
   border-radius: 16px;
@@ -67,7 +66,7 @@ main {
   font-weight: bold;
   text-align: center;
   box-shadow: 3px 3px 0 var(--border-color);
-  margin-top: 1.5rem;
+  margin: 1.5rem auto 0 auto; /* centers horizontally with spacing above */
   z-index: 1;
 }
 
