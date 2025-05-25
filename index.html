@@ -130,6 +130,8 @@
       border-top: 4px solid var(--border-color);
       border-bottom: 4px solid var(--border-color);
       position: relative;
+      width: 100vw;
+      margin-left: calc(-1 * ((100vw - 100%) / 2)); /* full bleed on all screens */
     }
 
     .carousel-track {
@@ -228,20 +230,16 @@
     const carousel = document.getElementById('carousel');
 
     let scrollX = 0;
-    let speed = 0.5;
-    let paused = false;
+    let baseSpeed = 0.8;
+    let speed = baseSpeed;
 
-    carousel.addEventListener('mouseenter', () => paused = true);
-    carousel.addEventListener('mouseleave', () => paused = false);
+    carousel.addEventListener('mouseenter', () => speed = 0.2);
+    carousel.addEventListener('mouseleave', () => speed = baseSpeed);
 
     function animate() {
-      if (!paused) {
-        scrollX += speed;
-        if (scrollX >= track.scrollWidth / 2) {
-          scrollX = 0;
-        }
-        track.style.transform = `translateX(${-scrollX}px)`;
-      }
+      scrollX += speed;
+      if (scrollX >= track.scrollWidth / 2) scrollX = 0;
+      track.style.transform = `translateX(${-scrollX}px)`;
       requestAnimationFrame(animate);
     }
 
