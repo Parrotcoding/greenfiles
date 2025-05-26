@@ -2,231 +2,190 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Greenfiles: Compress Image</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Greenfiles Image Compressor</title>
   <style>
+    :root {
+      --bg-color: #b6eeb3;
+      --text-color: black;
+      --accent: white;
+      --border: black;
+    }
+
     body {
-      font-family: system-ui, sans-serif;
-      background: #e4fbe4;
-      color: #222;
       margin: 0;
+      font-family: 'Courier New', Courier, monospace;
+      background: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       padding: 2rem;
-      text-align: center;
     }
 
     h1 {
-      margin-bottom: 0.5rem;
+      margin-bottom: 1rem;
     }
 
-    .uploader {
-      display: inline-block;
-      border: 2px dashed #4caf50;
+    .upload-section {
+      border: 2px solid var(--border);
       border-radius: 1rem;
       padding: 2rem;
-      cursor: pointer;
-      background: #ffffffcc;
-      transition: background 0.2s ease;
-    }
-
-    .uploader:hover {
-      background: #ffffff;
-    }
-
-    input[type="file"] {
-      display: none;
-    }
-
-    .preview-container {
+      background: var(--accent);
       display: flex;
-      justify-content: center;
-      gap: 2rem;
-      margin-top: 2rem;
-      flex-wrap: wrap;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 600px;
     }
 
-    .preview-box {
-      text-align: center;
-    }
-
-    .preview-box img {
+    .thumbnail {
+      margin-top: 1rem;
       max-width: 200px;
-      max-height: 200px;
-      border: 1px solid #ccc;
+      border: 2px solid var(--border);
     }
 
-    .note {
-      font-size: 0.8rem;
-      color: #666;
-      margin-top: 0.25rem;
-    }
-
-    .slider-group {
-      margin: 1.5rem auto;
-      max-width: 300px;
-      text-align: left;
-    }
-
-    .slider-group input {
+    .slider-section, .format-section {
+      margin-top: 2rem;
       width: 100%;
     }
 
-    .output {
-      margin-top: 0.5rem;
-      font-weight: bold;
+    input[type=range] {
+      width: 100%;
     }
 
-    button, select {
-      background: #4caf50;
-      color: white;
-      font-weight: bold;
-      border: none;
+    .preview-section {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 2rem;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .preview {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 2px solid var(--border);
+      background: var(--accent);
+      padding: 1rem;
       border-radius: 1rem;
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
+    }
+
+    .button-pill {
+      border: 2px solid var(--border);
+      background: var(--accent);
+      border-radius: 999px;
+      padding: 0.5rem 1rem;
       cursor: pointer;
-    }
-
-    button:hover, select:hover {
-      background: #43a047;
-    }
-
-    select {
-      margin-top: 1rem;
+      font-weight: bold;
+      margin: 0.5rem;
     }
   </style>
 </head>
 <body>
-  <h1>Compress Image</h1>
-  <label class="uploader" id="uploadLabel">
-    📂 Click to Upload Image
-    <input type="file" accept="image/*" id="fileInput">
-  </label>
+  <h1>Greenfiles Image Compressor</h1>
 
-  <div id="preview" style="display:none;">
-    <div class="preview-container">
-      <div class="preview-box">
-        <p><strong>Original:</strong></p>
-        <img id="originalImg" />
-      </div>
-      <div class="preview-box">
-        <p><strong>Compressed:</strong></p>
-        <img id="thumb" alt="Thumbnail preview (illustrative only)" />
-        <div class="note">Thumbnail is for illustrative purposes only.</div>
-      </div>
+  <div class="upload-section">
+    <input type="file" accept="image/*" id="fileInput" />
+    <img class="thumbnail" id="thumbnail" src="" alt="Thumbnail preview (illustrative)" style="display:none" />
+  </div>
+
+  <div class="slider-section" id="sliderContainer" style="display:none">
+    <label for="quality">Compression Quality: <span id="qualityLabel">80</span>%</label>
+    <input type="range" id="quality" min="10" max="100" value="80" />
+    <p>Estimated size: <span id="estimatedSize">-</span></p>
+  </div>
+
+  <div class="format-section" id="formatContainer" style="display:none">
+    <label>Choose Format:</label><br />
+    <button class="button-pill" onclick="setFormat('image/jpeg')">JPEG</button>
+    <button class="button-pill" onclick="setFormat('image/png')">PNG</button>
+    <button class="button-pill" onclick="setFormat('image/webp')">WebP</button>
+  </div>
+
+  <div class="preview-section" id="previewSection" style="display:none">
+    <div class="preview">
+      <h3>Original</h3>
+      <img id="originalPreview" style="max-width:100%" />
     </div>
-
-    <div class="slider-group">
-      <label for="quality">Compression Quality: <span id="qualityVal">0.8</span></label>
-      <input type="range" id="quality" min="0.1" max="1" step="0.05" value="0.8" />
-      <div class="output">Estimated size: <span id="estSize">—</span></div>
+    <div class="preview">
+      <h3>Compressed</h3>
+      <img id="compressedPreview" style="max-width:100%" />
+      <a id="downloadLink" class="button-pill" download="compressed-image.jpg">Download</a>
     </div>
-
-    <select id="formatSelect">
-      <option value="image/jpeg">JPEG</option>
-      <option value="image/png">PNG</option>
-      <option value="image/webp">WebP</option>
-      <option value="image/avif">AVIF</option>
-      <option value="image/heif">HEIF (may not be supported)</option>
-    </select>
-
-    <br><br>
-    <button id="downloadBtn">Download Compressed</button>
   </div>
 
   <script>
     const fileInput = document.getElementById('fileInput');
-    const originalImg = document.getElementById('originalImg');
-    const thumb = document.getElementById('thumb');
-    const preview = document.getElementById('preview');
-    const qualityInput = document.getElementById('quality');
-    const qualityVal = document.getElementById('qualityVal');
-    const estSize = document.getElementById('estSize');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const uploadLabel = document.getElementById('uploadLabel');
-    const formatSelect = document.getElementById('formatSelect');
+    const thumbnail = document.getElementById('thumbnail');
+    const qualitySlider = document.getElementById('quality');
+    const qualityLabel = document.getElementById('qualityLabel');
+    const estimatedSize = document.getElementById('estimatedSize');
+    const sliderContainer = document.getElementById('sliderContainer');
+    const formatContainer = document.getElementById('formatContainer');
+    const previewSection = document.getElementById('previewSection');
+    const originalPreview = document.getElementById('originalPreview');
+    const compressedPreview = document.getElementById('compressedPreview');
+    const downloadLink = document.getElementById('downloadLink');
 
-    let image = new Image();
-    let currentBlob = null;
-    let currentType = 'image/jpeg';
+    let originalFile;
+    let currentFormat = 'image/jpeg';
 
-    fileInput.addEventListener('change', e => {
+    fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
+      originalFile = file;
       const reader = new FileReader();
-      reader.onload = function () {
-        image.src = reader.result;
-        originalImg.src = reader.result;
+      reader.onload = () => {
+        thumbnail.src = reader.result;
+        thumbnail.style.display = 'block';
+        originalPreview.src = reader.result;
+        compressImage();
+        sliderContainer.style.display = 'block';
+        formatContainer.style.display = 'block';
+        previewSection.style.display = 'flex';
       };
       reader.readAsDataURL(file);
-      uploadLabel.style.display = 'none';
-      preview.style.display = 'block';
     });
 
-    image.onload = () => {
-      drawCompressed();
-    };
-
-    qualityInput.addEventListener('input', () => {
-      qualityVal.textContent = qualityInput.value;
-      drawCompressed();
+    qualitySlider.addEventListener('input', () => {
+      qualityLabel.textContent = qualitySlider.value;
+      compressImage();
     });
 
-    formatSelect.addEventListener('change', () => {
-      currentType = formatSelect.value;
-      drawCompressed();
-    });
-
-    function drawCompressed() {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-
-      const maxDim = 800;
-      let { width, height } = image;
-
-      if (width > height && width > maxDim) {
-        height = height * (maxDim / width);
-        width = maxDim;
-      } else if (height > maxDim) {
-        width = width * (maxDim / height);
-        height = maxDim;
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-      ctx.drawImage(image, 0, 0, width, height);
-
-      canvas.toBlob(blob => {
-        if (!blob) return alert('Format not supported by this browser.');
-        currentBlob = blob;
-        thumb.src = URL.createObjectURL(blob);
-        estSize.textContent = formatSize(blob.size);
-      }, currentType, parseFloat(qualityInput.value));
+    function setFormat(fmt) {
+      currentFormat = fmt;
+      compressImage();
     }
 
-    function formatSize(bytes) {
-      if (bytes < 1024) return `${bytes} B`;
-      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-      return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-    }
+    function compressImage() {
+      const quality = parseInt(qualitySlider.value) / 100;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
 
-    downloadBtn.addEventListener('click', () => {
-      if (!currentBlob) return;
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(currentBlob);
-      a.download = 'compressed' + getExtension(currentType);
-      a.click();
-    });
-
-    function getExtension(mime) {
-      switch (mime) {
-        case 'image/png': return '.png';
-        case 'image/jpeg': return '.jpg';
-        case 'image/webp': return '.webp';
-        case 'image/avif': return '.avif';
-        case 'image/heif': return '.heif';
-        default: return '';
-      }
+          canvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            compressedPreview.src = url;
+            downloadLink.href = url;
+            downloadLink.download = `compressed.${currentFormat.split('/')[1]}`;
+            estimatedSize.textContent = `${(blob.size / 1024).toFixed(1)} KB`;
+          }, currentFormat, quality);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(originalFile);
     }
   </script>
 </body>
