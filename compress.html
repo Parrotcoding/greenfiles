@@ -170,9 +170,10 @@
       "Minimal compression, excellent quality."
     ];
 
-    const sampleImage = new Image();
-    sampleImage.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Example.jpg/320px-Example.jpg";
-    sampleImage.onload = () => updateSimulatedPreview();
+const sampleImage = new Image();
+sampleImage.crossOrigin = "anonymous";
+sampleImage.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Moraine_Lake_17092005.jpg/320px-Moraine_Lake_17092005.jpg";
+sampleImage.onload = () => updateSimulatedPreview();
 
     function formatSize(bytes) {
       if (bytes > 1e6) return (bytes / 1e6).toFixed(1) + " MB";
