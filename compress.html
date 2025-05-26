@@ -12,6 +12,7 @@
       --accent-color: white;
       --border-color: black;
     }
+
     body {
       margin: 0;
       background: var(--bg-color);
@@ -21,6 +22,7 @@
       flex-direction: column;
       min-height: 100vh;
     }
+
     header {
       background: var(--bg-color);
       padding: 1rem;
@@ -29,6 +31,7 @@
       font-weight: bold;
       text-align: center;
     }
+
     main {
       display: flex;
       flex: 1;
@@ -37,6 +40,7 @@
       justify-content: center;
       flex-wrap: wrap;
     }
+
     .column {
       background: var(--accent-color);
       border: 4px solid var(--border-color);
@@ -46,6 +50,7 @@
       max-width: 500px;
       box-sizing: border-box;
     }
+
     label.uploader {
       display: block;
       border: 3px dashed var(--border-color);
@@ -55,23 +60,41 @@
       border-radius: 12px;
       margin-bottom: 1rem;
     }
+
     label.uploader:hover {
       background: #e0f5e0;
     }
+
     input[type="file"] {
       display: none;
     }
+
     .slider-wrap {
       margin-top: 1rem;
       font-size: 0.9rem;
     }
+
     input[type="range"] {
       width: 100%;
     }
+
     .estimate {
       margin-top: 0.5rem;
       font-size: 0.85rem;
     }
+
+    .preview-thumb {
+      margin-top: 1rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .preview-thumb canvas {
+      max-width: 100%;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+    }
+
     button {
       margin-top: 1.5rem;
       padding: 0.75rem 1.5rem;
@@ -84,9 +107,11 @@
       cursor: pointer;
       border-radius: 12px;
     }
+
     button:hover {
       background: #d7f7d3;
     }
+
     a.download {
       display: block;
       margin-top: 1rem;
@@ -108,6 +133,11 @@
         Compression Quality: <span id="quality-val">60%</span>
         <input type="range" id="quality-slider" min="10" max="100" value="60" />
         <div class="estimate" id="quality-estimate">Estimated: High compression, some quality loss.</div>
+        <div class="estimate" id="size-estimate">Est. output: –</div>
+      </div>
+
+      <div class="preview-thumb">
+        <canvas id="simulated-preview" width="160" height="120"></canvas>
       </div>
 
       <button id="shrink-btn" disabled>Shrink Files</button>
@@ -125,8 +155,12 @@
     const qualitySlider = document.getElementById('quality-slider');
     const qualityVal = document.getElementById('quality-val');
     const qualityEstimate = document.getElementById('quality-estimate');
+    const sizeEstimate = document.getElementById('size-estimate');
+    const previewCanvas = document.getElementById('simulated-preview');
+    const previewCtx = previewCanvas.getContext('2d');
 
     let shrinkFiles = [];
+    let totalOriginalSize = 0;
 
     const estimates = [
       "Very high compression, noticeable quality drop.",
@@ -136,22 +170,45 @@
       "Minimal compression, excellent quality."
     ];
 
-    qualitySlider.addEventListener('input', () => {
+    const sampleImage = new Image();
+    sampleImage.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Example.jpg/320px-Example.jpg";
+    sampleImage.onload = () => updateSimulatedPreview();
+
+    function formatSize(bytes) {
+      if (bytes > 1e6) return (bytes / 1e6).toFixed(1) + " MB";
+      return (bytes / 1024).toFixed(1) + " KB";
+    }
+
+    function updateEstimates() {
       const q = +qualitySlider.value;
       qualityVal.textContent = `${q}%`;
-      if (q <= 25) qualityEstimate.textContent = "Estimated: " + estimates[0];
-      else if (q <= 50) qualityEstimate.textContent = "Estimated: " + estimates[1];
-      else if (q <= 70) qualityEstimate.textContent = "Estimated: " + estimates[2];
-      else if (q <= 85) qualityEstimate.textContent = "Estimated: " + estimates[3];
-      else qualityEstimate.textContent = "Estimated: " + estimates[4];
+
+      const level = q <= 25 ? 0 : q <= 50 ? 1 : q <= 70 ? 2 : q <= 85 ? 3 : 4;
+      qualityEstimate.textContent = "Estimated: " + estimates[level];
+
+      if (totalOriginalSize > 0) {
+        const estSize = totalOriginalSize * (q / 100) * 0.8;
+        sizeEstimate.textContent = `Est. output: ${formatSize(estSize)}`;
+      } else {
+        sizeEstimate.textContent = "Est. output: –";
+      }
+    }
+
+    qualitySlider.addEventListener('input', () => {
+      updateEstimates();
+      updateSimulatedPreview();
     });
 
     shrinkLabel.addEventListener('click', () => shrinkInput.click());
+
     shrinkInput.addEventListener('change', () => {
-      shrinkFiles = Array.from(shrinkInput.files);
-      shrinkList.innerHTML = shrinkFiles.map(f => '• ' + f.name).join('<br>');
+      shrinkFiles = Array.from(shrinkInput.files).filter(f => f.type.startsWith('image/'));
+      totalOriginalSize = shrinkFiles.reduce((acc, f) => acc + f.size, 0);
+
+      shrinkList.innerHTML = shrinkFiles.map(f => `• ${f.name} (${formatSize(f.size)})`).join('<br>');
       shrinkBtn.disabled = shrinkFiles.length === 0;
       shrinkDownload.style.display = 'none';
+      updateEstimates();
     });
 
     shrinkBtn.addEventListener('click', async () => {
@@ -159,20 +216,12 @@
       const quality = +qualitySlider.value / 100;
 
       for (const file of shrinkFiles) {
-        if (!file.type.startsWith('image/')) {
-          zip.file(file.name, file); // fallback for unsupported
-          continue;
-        }
-
         const img = await loadImage(file);
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-
-        const scale = 1; // keep size same (you can add a scale slider too)
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
         const format = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
         const blob = await new Promise(res => canvas.toBlob(res, format, quality));
         const ext = format === 'image/png' ? '.png' : '.jpg';
@@ -197,6 +246,29 @@
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
+    }
+
+    function updateSimulatedPreview() {
+      const scale = 0.5;
+      previewCanvas.width = 160;
+      previewCanvas.height = 120;
+
+      const offscreen = document.createElement('canvas');
+      offscreen.width = sampleImage.width;
+      offscreen.height = sampleImage.height;
+      const offCtx = offscreen.getContext('2d');
+      offCtx.drawImage(sampleImage, 0, 0);
+
+      const q = +qualitySlider.value / 100;
+      offscreen.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const simImg = new Image();
+        simImg.onload = () => {
+          previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+          previewCtx.drawImage(simImg, 0, 0, previewCanvas.width, previewCanvas.height);
+        };
+        simImg.src = url;
+      }, 'image/jpeg', q);
     }
   </script>
 </body>
