@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Compress Tools — Greenfiles</title>
+  <title>Compress Images — Greenfiles</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="faviconfiles.png" />
   <style>
@@ -46,10 +46,6 @@
       max-width: 500px;
       box-sizing: border-box;
     }
-    .column h2 {
-      margin-top: 0;
-      font-size: 1.2rem;
-    }
     label.uploader {
       display: block;
       border: 3px dashed var(--border-color);
@@ -65,13 +61,20 @@
     input[type="file"] {
       display: none;
     }
-    #file-list-zip,
-    #file-list-shrink {
+    .slider-wrap {
+      margin-top: 1rem;
       font-size: 0.9rem;
+    }
+    input[type="range"] {
+      width: 100%;
+    }
+    .estimate {
       margin-top: 0.5rem;
+      font-size: 0.85rem;
     }
     button {
-      padding: 0.6rem 1.4rem;
+      margin-top: 1.5rem;
+      padding: 0.75rem 1.5rem;
       background: var(--accent-color);
       border: 3px solid var(--border-color);
       box-shadow: 3px 3px 0 var(--border-color);
@@ -80,7 +83,6 @@
       font-weight: bold;
       cursor: pointer;
       border-radius: 12px;
-      margin-top: 1rem;
     }
     button:hover {
       background: #d7f7d3;
@@ -92,27 +94,22 @@
   </style>
 </head>
 <body>
-  <header>Compress Tools — Greenfiles</header>
-
+  <header>Compress Images — Greenfiles</header>
   <main>
     <div class="column">
-      <h2>ZIP Files</h2>
-      <label class="uploader" id="zip-label">
-        Click or drop files here to ZIP
-        <input type="file" id="zip-input" multiple />
-        <div id="file-list-zip"></div>
-      </label>
-      <button id="zip-btn" disabled>Compress to ZIP</button>
-      <a id="zip-download" class="download" download="compressed.zip">⬇️ Download ZIP</a>
-    </div>
-
-    <div class="column">
-      <h2>Shrink Files</h2>
+      <h2>Shrink Images</h2>
       <label class="uploader" id="shrink-label">
-        Click or drop files to shrink
-        <input type="file" id="shrink-input" multiple />
+        Click or drop image files here
+        <input type="file" id="shrink-input" multiple accept="image/*" />
         <div id="file-list-shrink"></div>
       </label>
+
+      <div class="slider-wrap">
+        Compression Quality: <span id="quality-val">60%</span>
+        <input type="range" id="quality-slider" min="10" max="100" value="60" />
+        <div class="estimate" id="quality-estimate">Estimated: High compression, some quality loss.</div>
+      </div>
+
       <button id="shrink-btn" disabled>Shrink Files</button>
       <a id="shrink-download" class="download" download="shrunk.zip">⬇️ Download Shrunk ZIP</a>
     </div>
@@ -120,28 +117,75 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
   <script>
-    // Load FFmpeg safely
-    let ffmpeg, createFFmpeg, fetchFile;
-    let ffmpegReady = false;
+    const shrinkInput = document.getElementById('shrink-input');
+    const shrinkLabel = document.getElementById('shrink-label');
+    const shrinkList = document.getElementById('file-list-shrink');
+    const shrinkBtn = document.getElementById('shrink-btn');
+    const shrinkDownload = document.getElementById('shrink-download');
+    const qualitySlider = document.getElementById('quality-slider');
+    const qualityVal = document.getElementById('quality-val');
+    const qualityEstimate = document.getElementById('quality-estimate');
 
-    const script = document.createElement('script');
-    script.src = "https://unpkg.com/@ffmpeg/ffmpeg@0.12.2/dist/ffmpeg.min.js";
-    script.onload = async () => {
-      ({ createFFmpeg, fetchFile } = window.FFmpeg);
-      ffmpeg = createFFmpeg({ log: false });
-      await ffmpeg.load();
-      ffmpegReady = true;
-    };
-    document.body.appendChild(script);
+    let shrinkFiles = [];
 
-    async function ensureFFmpegLoaded() {
-      if (!ffmpegReady) {
-        alert('FFmpeg is still loading, please wait a few more seconds...');
-        throw new Error('FFmpeg not loaded yet');
+    const estimates = [
+      "Very high compression, noticeable quality drop.",
+      "High compression, some quality loss.",
+      "Moderate compression, decent quality.",
+      "Mild compression, near-original quality.",
+      "Minimal compression, excellent quality."
+    ];
+
+    qualitySlider.addEventListener('input', () => {
+      const q = +qualitySlider.value;
+      qualityVal.textContent = `${q}%`;
+      if (q <= 25) qualityEstimate.textContent = "Estimated: " + estimates[0];
+      else if (q <= 50) qualityEstimate.textContent = "Estimated: " + estimates[1];
+      else if (q <= 70) qualityEstimate.textContent = "Estimated: " + estimates[2];
+      else if (q <= 85) qualityEstimate.textContent = "Estimated: " + estimates[3];
+      else qualityEstimate.textContent = "Estimated: " + estimates[4];
+    });
+
+    shrinkLabel.addEventListener('click', () => shrinkInput.click());
+    shrinkInput.addEventListener('change', () => {
+      shrinkFiles = Array.from(shrinkInput.files);
+      shrinkList.innerHTML = shrinkFiles.map(f => '• ' + f.name).join('<br>');
+      shrinkBtn.disabled = shrinkFiles.length === 0;
+      shrinkDownload.style.display = 'none';
+    });
+
+    shrinkBtn.addEventListener('click', async () => {
+      const zip = new JSZip();
+      const quality = +qualitySlider.value / 100;
+
+      for (const file of shrinkFiles) {
+        if (!file.type.startsWith('image/')) {
+          zip.file(file.name, file); // fallback for unsupported
+          continue;
+        }
+
+        const img = await loadImage(file);
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const scale = 1; // keep size same (you can add a scale slider too)
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const format = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        const blob = await new Promise(res => canvas.toBlob(res, format, quality));
+        const ext = format === 'image/png' ? '.png' : '.jpg';
+        zip.file(file.name.replace(/\.\w+$/, ext), blob);
       }
-    }
 
-    function loadImageFromFile(file) {
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      shrinkDownload.href = url;
+      shrinkDownload.style.display = 'inline-block';
+    });
+
+    function loadImage(file) {
       return new Promise((resolve, reject) => {
         const img = new Image();
         const reader = new FileReader();
@@ -154,92 +198,6 @@
         reader.readAsDataURL(file);
       });
     }
-
-    // ZIP logic
-    const zipInput = document.getElementById('zip-input');
-    const zipLabel = document.getElementById('zip-label');
-    const zipList = document.getElementById('file-list-zip');
-    const zipBtn = document.getElementById('zip-btn');
-    const zipDownload = document.getElementById('zip-download');
-    let zipFiles = [];
-
-    zipLabel.addEventListener('click', () => zipInput.click());
-    zipInput.addEventListener('change', () => {
-      zipFiles = Array.from(zipInput.files);
-      zipList.innerHTML = zipFiles.map(f => '• ' + f.name).join('<br>');
-      zipBtn.disabled = zipFiles.length === 0;
-      zipDownload.style.display = 'none';
-    });
-
-    zipBtn.addEventListener('click', async () => {
-      const zip = new JSZip();
-      for (const file of zipFiles) {
-        zip.file(file.name, file);
-      }
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      zipDownload.href = url;
-      zipDownload.style.display = 'inline-block';
-    });
-
-    // Shrink logic
-    const shrinkInput = document.getElementById('shrink-input');
-    const shrinkLabel = document.getElementById('shrink-label');
-    const shrinkList = document.getElementById('file-list-shrink');
-    const shrinkBtn = document.getElementById('shrink-btn');
-    const shrinkDownload = document.getElementById('shrink-download');
-    let shrinkFiles = [];
-
-    shrinkLabel.addEventListener('click', () => shrinkInput.click());
-    shrinkInput.addEventListener('change', () => {
-      shrinkFiles = Array.from(shrinkInput.files);
-      shrinkList.innerHTML = shrinkFiles.map(f => '• ' + f.name).join('<br>');
-      shrinkBtn.disabled = shrinkFiles.length === 0;
-      shrinkDownload.style.display = 'none';
-    });
-
-    shrinkBtn.addEventListener('click', async () => {
-      try {
-        await ensureFFmpegLoaded();
-        const zip = new JSZip();
-
-        for (const file of shrinkFiles) {
-          const type = file.type;
-
-          if (type.startsWith('image/')) {
-            const img = await loadImageFromFile(file);
-            const canvas = document.createElement('canvas');
-            const scale = 0.5;
-            canvas.width = img.width * scale;
-            canvas.height = img.height * scale;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.6));
-            zip.file(file.name.replace(/\.\w+$/, '.jpg'), blob);
-
-          } else if (type === 'audio/mpeg') {
-            const inputName = 'input.mp3';
-            const outputName = 'output.mp3';
-            ffmpeg.FS('writeFile', inputName, await fetchFile(file));
-            await ffmpeg.run('-i', inputName, '-b:a', '96k', outputName);
-            const data = ffmpeg.FS('readFile', outputName);
-            zip.file(file.name, new Blob([data.buffer], { type: 'audio/mpeg' }));
-            ffmpeg.FS('unlink', inputName);
-            ffmpeg.FS('unlink', outputName);
-
-          } else {
-            zip.file(file.name, file); // fallback
-          }
-        }
-
-        const blob = await zip.generateAsync({ type: 'blob' });
-        const url = URL.createObjectURL(blob);
-        shrinkDownload.href = url;
-        shrinkDownload.style.display = 'inline-block';
-      } catch (err) {
-        console.error(err);
-      }
-    });
   </script>
 </body>
 </html>
